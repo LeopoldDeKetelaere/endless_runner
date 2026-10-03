@@ -11,7 +11,7 @@ export default class GameScene extends Phaser.Scene {
     this.snelheid = CONFIG.startSnelheid;
     this.afstand = 0; // in pixels
     this.tijdTotVolgende = CONFIG.hindernisInterval;
-    this.vorigeDoorgang = HOOGTE / 2; // midden van de laatste vrije doorgang
+    this.doorgangen = [HOOGTE / 2]; // midden van de laatste vrije doorgangen
 
     // Scrollend decor: strepen en bubbels
     this.decor = [];
@@ -30,7 +30,7 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.existing(this.duiker);
     this.duiker.body.setCollideWorldBounds(true); // niet buiten beeld
 
-    // Hindernissen (rotsen, boten en rode blokken)
+    // Hindernissen (rotsen, boten, octopussen en vissen)
     this.hindernissen = this.add.group();
     this.physics.add.overlap(this.duiker, this.hindernissen, () => this.gameOver());
 
@@ -95,20 +95,39 @@ export default class GameScene extends Phaser.Scene {
     }
 
     for (const h of this.hindernissen.getChildren().slice()) {
-      h.body.setVelocityX(-this.snelheid);
+      // Vissen zwemmen sneller dan de achtergrond, de rest beweegt mee
+      h.body.setVelocityX(-this.snelheid * h.snelheidFactor);
+
+      // Octopussen dobberen: golfbeweging rond hun basishoogte
+      if (h.amp > 0) {
+        h.leeftijd += delta;
+        const doel = h.basisY + h.amp * Math.sin((2 * Math.PI * h.leeftijd) / h.periode + h.fase);
+        h.body.setVelocityY((doel - h.y) / (delta / 1000));
+      }
+
       if (h.x + h.width / 2 < 0) h.destroy(); // uit beeld
     }
   }
 
   // Maak een kolom hindernissen met gegarandeerd een doorgang (zie hindernissen.js)
   maakHindernis() {
-    const kolom = maakKolom(this.vorigeDoorgang, this.snelheid);
+    const kolom = maakKolom(this.doorgangen, this.snelheid);
     if (!kolom) return; // geen eerlijke kolom gevonden: sla over
-    this.vorigeDoorgang = kolom.doorgang;
+    this.doorgangen.push(kolom.doorgang);
+    if (this.doorgangen.length > 10) this.doorgangen.shift();
 
     for (const item of kolom.items) {
       // Alle hindernissen van een kolom beginnen op dezelfde plek (linkerkant)
-      const h = this.add.rectangle(BREEDTE + item.breedte / 2, item.y, item.breedte, item.hoogte, item.kleur);
+      const fase = item.fase ?? 0;
+      const startY = item.y + item.amp * Math.sin(fase);
+      const h = this.add.rectangle(BREEDTE + item.breedte / 2, startY, item.breedte, item.hoogte, item.kleur);
+      // Eigen bewegingsgegevens per hindernis
+      h.snelheidFactor = item.snelheidFactor ?? 1;
+      h.basisY = item.y;
+      h.amp = item.amp;
+      h.periode = item.periode;
+      h.fase = fase;
+      h.leeftijd = 0;
       this.physics.add.existing(h);
       h.body.setAllowGravity(false);
       this.hindernissen.add(h);

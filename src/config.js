@@ -24,10 +24,12 @@ export const CONFIG = {
   // de duiker op dat moment kan halen (1 = precies genoeg, lager = makkelijker)
   bereikFactor: 0.5,
 
-  // Kans dat een type in een kolom voorkomt (er is altijd minstens één type)
+  // Kans per kolom op een rots / boot / zeedier (er is altijd minstens één van de drie)
   kansRots: 0.6,
   kansBoot: 0.6,
-  kansRood: 0.5,
+  kansDier: 0.7,
+  // Van de zeedieren is dit het deel dat een octopus is (0.5 = half-half, 1 = alleen octopussen)
+  octopusAandeel: 0.5,
 
   // Rotsen en boten nemen maximaal zoveel van de schermhoogte in (0.2 = 20%)
   maxRandHoogteFractie: 0.2,
@@ -42,11 +44,20 @@ export const CONFIG = {
   bootMinHoogte: 50,
   bootKleur: 0x8b5a2b,
 
-  // Rode hindernissen: zweven op willekeurige hoogte
-  roodBreedte: 36,
-  roodMinHoogte: 40,
-  roodMaxHoogte: 160,
-  roodKleur: 0xe02424,
+  // Octopus: beweegt mee met de achtergrond en dobbert op en neer
+  octopusBreedte: 44,
+  octopusMinHoogte: 36,
+  octopusMaxHoogte: 56,
+  octopusKleur: 0x9b4dca,
+  dobberHoogte: 30,         // hoeveel pixels omhoog én omlaag
+  dobberPeriode: 2500,      // ms voor één volledige golf
+
+  // Vis: zwemt in een rechte lijn, sneller dan de achtergrond
+  visBreedte: 56,
+  visMinHoogte: 20,
+  visMaxHoogte: 32,
+  visKleur: 0xff8c1a,
+  visSnelheidFactor: 1.6,   // 1.6 = 60% sneller dan de achtergrond
 
   // Score: pixels afgelegd per scorepunt (meter)
   pixelsPerMeter: 50,
