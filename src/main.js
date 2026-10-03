@@ -1,18 +1,19 @@
 import Phaser from 'phaser';
-
-class MainScene extends Phaser.Scene {
-  create() {
-    this.add
-      .text(400, 300, 'Endless Runner', { fontSize: '48px', color: '#ffffff' })
-      .setOrigin(0.5);
-  }
-}
+import { BREEDTE, HOOGTE, CONFIG } from './config.js';
+import GameScene from './scenes/GameScene.js';
+import GameOverScene from './scenes/GameOverScene.js';
 
 new Phaser.Game({
   type: Phaser.AUTO,
-  width: 800,
-  height: 600,
+  width: BREEDTE,
+  height: HOOGTE,
   parent: 'game',
-  backgroundColor: '#1d2b53',
-  scene: MainScene,
+  backgroundColor: CONFIG.kleurAchtergrond,
+  physics: { default: 'arcade' },
+  // Schaal mee met het scherm en centreer
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
+  scene: [GameScene, GameOverScene],
 });
