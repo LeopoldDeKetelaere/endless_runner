@@ -24,12 +24,20 @@ export const CONFIG = {
   // de duiker op dat moment kan halen (1 = precies genoeg, lager = makkelijker)
   bereikFactor: 0.5,
 
-  // Kans per kolom op een rots / boot / zeedier (er is altijd minstens één van de drie)
-  kansRots: 0.6,
-  kansBoot: 0.6,
-  kansDier: 0.7,
+  // Kans per kolom op een rots / boot (nu zeldzamer dan de zeedieren)
+  kansRots: 0.25,
+  kansBoot: 0.25,
+  // Aantal zeedieren per kolom (willekeurig tussen min en max)
+  minDieren: 1,
+  maxDieren: 3,
   // Van de zeedieren is dit het deel dat een octopus is (0.5 = half-half, 1 = alleen octopussen)
   octopusAandeel: 0.5,
+  // Zeedieren zwemmen bij voorkeur rond het midden van het scherm.
+  // Spreiding in pixels rond het midden: kleiner = meer in het midden
+  dierMiddenSpreiding: 80,
+  // Kans dat de vrije doorgang naar de boven- of onderkant schuift (weg van het midden),
+  // zodat het midden niet altijd veilig is. 0 = willekeurig, 1 = altijd weg van het midden
+  doorgangWegVanMidden: 0.7,
 
   // Rotsen en boten nemen maximaal zoveel van de schermhoogte in (0.2 = 20%)
   maxRandHoogteFractie: 0.2,

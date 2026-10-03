@@ -1,21 +1,32 @@
 import { BREEDTE, HOOGTE, CONFIG } from './config.js';
 
-// Maakt één 'kolom' hindernissen (rots, boot, octopus en/of vis) en
-// garandeert dat er een doorgang overblijft. Geeft null als er geen eerlijke
-// kolom gevonden is (dan slaan we deze keer gewoon over).
+// Maakt één 'kolom' hindernissen (rots, boot, octopussen en/of vissen) en
+// garandeert dat er een doorgang overblijft. Geeft null als er geen kolom
+// gevonden is (dan slaan we deze keer gewoon over).
 //
 // doorgangen: lijst met de midden-hoogtes (y) van de laatste doorgangen (nieuwste laatst)
 // snelheid:   huidige wereldsnelheid (pixels per seconde)
 // Resultaat:  { items: [{ type, breedte, hoogte, y, kleur, ... }], doorgang }
 //
 // Hoe de eerlijkheid werkt:
-// - Rotsen, boten en octopussen staan in de kolom zelf. Voor een octopus tellen
-//   we het hele gebied waar hij op en neer dobbert als 'bezet'.
-// - Een vis is sneller dan de achtergrond en kan dus over eerdere kolommen heen
-//   zwemmen. Daarom plaatsen we een vis alleen buiten het gebied waar de recente
-//   doorgangen zitten: hij kan de doorgang nooit blokkeren.
+// 1. We kiezen EERST de doorgang: een vrije strook van minimaleOpening pixels hoog,
+//    die haalbaar is vanaf de vorige doorgang.
+// 2. Daarna plaatsen we alles eromheen. Niets mag de strook raken. Voor een octopus
+//    telt het hele gebied waar hij op en neer dobbert.
+// 3. Een vis is sneller dan de achtergrond en kan over eerdere kolommen heen
+//    zwemmen. Daarom blijft hij ook buiten de doorgangen van de recente kolommen.
 
 const rand = (min, max) => min + Math.random() * (max - min);
+const randInt = (min, max) => Math.floor(rand(min, max + 1));
+
+// Willekeurig getal met normale verdeling (klokvorm) rond 'midden'
+function normaal(midden, spreiding) {
+  const u = 1 - Math.random();
+  const v = Math.random();
+  return midden + spreiding * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}
+
+const halveOpening = () => CONFIG.minimaleOpening / 2;
 
 // Rotsen en boten zijn nooit hoger dan dit deel van het scherm
 const maxRandHoogte = () => HOOGTE * CONFIG.maxRandHoogteFractie;
@@ -40,99 +51,97 @@ function aantalKolommenVoorVis() {
   return Math.ceil(ingehaald / kolomAfstand()) + 1;
 }
 
-// Bedenk een willekeurige kolom (nog zonder eerlijkheidscontrole)
-// Geeft { items, vis }: vis is apart, want die wordt pas later geplaatst.
-function bedenkKolom() {
-  const items = [];
-  let vis = null;
-  const rots = Math.random() < CONFIG.kansRots;
-  const boot = Math.random() < CONFIG.kansBoot;
-  const dier = Math.random() < CONFIG.kansDier || (!rots && !boot);
-
-  if (rots) {
-    const hoogte = rand(CONFIG.rotsMinHoogte, maxRandHoogte());
-    items.push({ type: 'rots', breedte: CONFIG.rotsBreedte, hoogte, y: HOOGTE - hoogte / 2, amp: 0, kleur: CONFIG.rotsKleur });
-  }
-  if (boot) {
-    const hoogte = rand(CONFIG.bootMinHoogte, maxRandHoogte());
-    items.push({ type: 'boot', breedte: CONFIG.bootBreedte, hoogte, y: hoogte / 2, amp: 0, kleur: CONFIG.bootKleur });
-  }
-  if (dier && Math.random() < CONFIG.octopusAandeel) {
-    const hoogte = rand(CONFIG.octopusMinHoogte, CONFIG.octopusMaxHoogte);
-    const amp = CONFIG.dobberHoogte;
-    // Het hele dobbergebied moet binnen het scherm blijven
-    const y = rand(amp + hoogte / 2, HOOGTE - amp - hoogte / 2);
-    items.push({
-      type: 'octopus', breedte: CONFIG.octopusBreedte, hoogte, y, amp,
-      periode: CONFIG.dobberPeriode, fase: rand(0, Math.PI * 2), kleur: CONFIG.octopusKleur,
-    });
-  } else if (dier) {
-    const hoogte = rand(CONFIG.visMinHoogte, CONFIG.visMaxHoogte);
-    vis = { type: 'vis', breedte: CONFIG.visBreedte, hoogte, y: 0, amp: 0, snelheidFactor: CONFIG.visSnelheidFactor, kleur: CONFIG.visKleur };
-  }
-  return { items, vis };
-}
-
-// Zoek de vrije stroken (tussen hindernissen en de schermranden)
-function vrijeStroken(items) {
-  const bezet = items
-    .map((i) => [i.y - i.amp - i.hoogte / 2, i.y + i.amp + i.hoogte / 2])
-    .sort((a, b) => a[0] - b[0]);
-  const stroken = [];
-  let huidig = 0;
-  for (const [boven, onder] of bezet) {
-    if (boven > huidig) stroken.push([huidig, boven]);
-    huidig = Math.max(huidig, onder);
-  }
-  if (huidig < HOOGTE) stroken.push([huidig, HOOGTE]);
-  return stroken;
-}
-
-// Is er een strook die groot genoeg is én haalbaar vanaf de vorige doorgang?
-// Zo ja: geef het midden van een doorgang terug (willekeurig gekozen uit alle
-// haalbare plekken, zodat de doorgang niet altijd naar boven of onder drijft).
-function zoekDoorgang(items, vorigeDoorgang, snelheid) {
-  const half = CONFIG.minimaleOpening / 2;
+// Kies de doorgang voor deze kolom: haalbaar vanaf de vorige, binnen het scherm.
+// Meestal schuift hij weg van het midden, zodat het midden niet altijd veilig is.
+function kiesDoorgang(vorige, snelheid) {
   const verschuiving = maxVerschuiving(snelheid);
-  const opties = [];
-  for (const [boven, onder] of vrijeStroken(items)) {
-    if (onder - boven < CONFIG.minimaleOpening) continue;
-    // Het midden van de duiker mag in dit bereik liggen, en moet haalbaar zijn
-    const van = Math.max(boven + half, vorigeDoorgang - verschuiving);
-    const tot = Math.min(onder - half, vorigeDoorgang + verschuiving);
-    if (van <= tot) opties.push([van, tot]);
-  }
-  if (opties.length === 0) return null;
-  const [van, tot] = opties[Math.floor(Math.random() * opties.length)];
-  return rand(van, tot);
+  const van = Math.max(halveOpening(), vorige - verschuiving);
+  const tot = Math.min(HOOGTE - halveOpening(), vorige + verschuiving);
+  const a = rand(van, tot);
+  if (Math.random() >= CONFIG.doorgangWegVanMidden) return a;
+  const b = rand(van, tot);
+  // Neem van twee gokken degene die het verst van het midden ligt
+  return Math.abs(a - HOOGTE / 2) > Math.abs(b - HOOGTE / 2) ? a : b;
 }
 
-// Kies een hoogte voor de vis, buiten het gebied van de recente doorgangen
-function plaatsVis(vis, recenteDoorgangen) {
-  const half = CONFIG.minimaleOpening / 2;
-  const boven = Math.min(...recenteDoorgangen) - half;
-  const onder = Math.max(...recenteDoorgangen) + half;
-  const opties = [];
-  if (boven - vis.hoogte / 2 >= vis.hoogte / 2) opties.push([vis.hoogte / 2, boven - vis.hoogte / 2]);
-  if (HOOGTE - vis.hoogte / 2 >= onder + vis.hoogte / 2) opties.push([onder + vis.hoogte / 2, HOOGTE - vis.hoogte / 2]);
-  if (opties.length === 0) return false;
-  const [van, tot] = opties[Math.floor(Math.random() * opties.length)];
-  vis.y = rand(van, tot);
-  return true;
+// Overlapt het gebied [boven, onder] met een ander gebied?
+const overlapt = (b1, o1, b2, o2) => b1 < o2 && o1 > b2;
+
+// Gebied (boven, onder) dat een item inneemt, inclusief dobberen
+const gebied = (i) => [i.y - i.amp - i.hoogte / 2, i.y + i.amp + i.hoogte / 2];
+
+// Probeer een dier op een middenvoorkeur-hoogte te zetten dat 'verboden' gebieden vermijdt.
+// maakItem(y) levert het item; verboden is een lijst [boven, onder]; ruimte is [minY, maxY].
+function plaatsDier(maakItem, ruimte, verboden, bestaande) {
+  for (let poging = 0; poging < 15; poging++) {
+    const y = Math.min(Math.max(normaal(HOOGTE / 2, CONFIG.dierMiddenSpreiding), ruimte[0]), ruimte[1]);
+    const item = maakItem(y);
+    const [boven, onder] = gebied(item);
+    if (verboden.some(([vb, vo]) => overlapt(boven, onder, vb, vo))) continue;
+    // Niet bovenop een ander dier van dezelfde soort in deze kolom
+    if (bestaande.some((b) => b.type === item.type && overlapt(boven, onder, ...gebied(b)))) continue;
+    return item;
+  }
+  return null;
 }
 
 export function maakKolom(doorgangen, snelheid) {
   const vorige = doorgangen[doorgangen.length - 1];
+  const half = halveOpening();
+  const recent = (doorgang) => [...doorgangen, doorgang].slice(-aantalKolommenVoorVis());
+
   for (let poging = 0; poging < 30; poging++) {
-    const { items, vis } = bedenkKolom();
-    const doorgang = zoekDoorgang(items, vorige, snelheid);
-    if (doorgang === null) continue;
-    if (vis) {
-      const recent = [...doorgangen, doorgang].slice(-aantalKolommenVoorVis());
-      if (!plaatsVis(vis, recent)) continue;
-      items.push(vis);
+    const doorgang = kiesDoorgang(vorige, snelheid);
+    const doorgangBoven = doorgang - half;
+    const doorgangOnder = doorgang + half;
+    const items = [];
+
+    // Rots: vanaf de bodem, mag de doorgang niet raken
+    if (Math.random() < CONFIG.kansRots) {
+      const hoogte = rand(CONFIG.rotsMinHoogte, maxRandHoogte());
+      if (HOOGTE - hoogte >= doorgangOnder) {
+        items.push({ type: 'rots', breedte: CONFIG.rotsBreedte, hoogte, y: HOOGTE - hoogte / 2, amp: 0, kleur: CONFIG.rotsKleur });
+      }
     }
-    return { items, doorgang };
+    // Boot: vanaf de bovenkant
+    if (Math.random() < CONFIG.kansBoot) {
+      const hoogte = rand(CONFIG.bootMinHoogte, maxRandHoogte());
+      if (hoogte <= doorgangBoven) {
+        items.push({ type: 'boot', breedte: CONFIG.bootBreedte, hoogte, y: hoogte / 2, amp: 0, kleur: CONFIG.bootKleur });
+      }
+    }
+
+    // Zeedieren
+    const verbodenKolom = [[doorgangBoven, doorgangOnder]];
+    const dieren = [];
+    const aantal = randInt(CONFIG.minDieren, CONFIG.maxDieren);
+    // Vissen blijven buiten het gebied van alle recente doorgangen
+    const r = recent(doorgang);
+    const verbodenVis = [[Math.min(...r) - half, Math.max(...r) + half]];
+
+    for (let n = 0; n < aantal; n++) {
+      let dier = null;
+      if (Math.random() < CONFIG.octopusAandeel) {
+        const hoogte = rand(CONFIG.octopusMinHoogte, CONFIG.octopusMaxHoogte);
+        const amp = CONFIG.dobberHoogte;
+        const fase = rand(0, Math.PI * 2);
+        // Het hele dobbergebied moet binnen het scherm blijven
+        dier = plaatsDier(
+          (y) => ({ type: 'octopus', breedte: CONFIG.octopusBreedte, hoogte, y, amp, periode: CONFIG.dobberPeriode, fase, kleur: CONFIG.octopusKleur }),
+          [amp + hoogte / 2, HOOGTE - amp - hoogte / 2], verbodenKolom, dieren
+        );
+      } else {
+        const hoogte = rand(CONFIG.visMinHoogte, CONFIG.visMaxHoogte);
+        dier = plaatsDier(
+          (y) => ({ type: 'vis', breedte: CONFIG.visBreedte, hoogte, y, amp: 0, snelheidFactor: CONFIG.visSnelheidFactor, kleur: CONFIG.visKleur }),
+          [hoogte / 2, HOOGTE - hoogte / 2], verbodenVis, dieren
+        );
+      }
+      if (dier) dieren.push(dier);
+    }
+
+    items.push(...dieren);
+    if (items.length > 0) return { items, doorgang };
   }
   return null;
 }
