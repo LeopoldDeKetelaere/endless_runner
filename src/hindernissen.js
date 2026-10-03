@@ -19,6 +19,9 @@ function maxVerschuiving(snelheid) {
   return CONFIG.duikerSnelheid * tijd * CONFIG.bereikFactor;
 }
 
+// Rotsen en boten zijn nooit hoger dan dit deel van het scherm
+const maxRandHoogte = () => HOOGTE * CONFIG.maxRandHoogteFractie;
+
 // Bedenk een willekeurige kolom (nog zonder eerlijkheidscontrole)
 function bedenkKolom() {
   const items = [];
@@ -27,11 +30,11 @@ function bedenkKolom() {
   const rood = Math.random() < CONFIG.kansRood;
 
   if (rots) {
-    const hoogte = rand(CONFIG.rotsMinHoogte, CONFIG.rotsMaxHoogte);
+    const hoogte = rand(CONFIG.rotsMinHoogte, maxRandHoogte());
     items.push({ type: 'rots', breedte: CONFIG.rotsBreedte, hoogte, y: HOOGTE - hoogte / 2, kleur: CONFIG.rotsKleur });
   }
   if (boot) {
-    const hoogte = rand(CONFIG.bootMinHoogte, CONFIG.bootMaxHoogte);
+    const hoogte = rand(CONFIG.bootMinHoogte, maxRandHoogte());
     items.push({ type: 'boot', breedte: CONFIG.bootBreedte, hoogte, y: hoogte / 2, kleur: CONFIG.bootKleur });
   }
   if (rood || items.length === 0) {

@@ -29,16 +29,17 @@ export const CONFIG = {
   kansBoot: 0.6,
   kansRood: 0.5,
 
+  // Rotsen en boten nemen maximaal zoveel van de schermhoogte in (0.2 = 20%)
+  maxRandHoogteFractie: 0.2,
+
   // Rotsen: steken omhoog vanaf de bodem
   rotsBreedte: 60,
   rotsMinHoogte: 60,
-  rotsMaxHoogte: 220,
   rotsKleur: 0x808890,
 
   // Boten: hangen naar beneden vanaf de bovenkant
   bootBreedte: 90,
   bootMinHoogte: 50,
-  bootMaxHoogte: 200,
   bootKleur: 0x8b5a2b,
 
   // Rode hindernissen: zweven op willekeurige hoogte
