@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { BREEDTE, HOOGTE, CONFIG } from '../config.js';
-import { maakKolom } from '../hindernissen.js';
+import { maakKolom, nieuweToestand } from '../hindernissen.js';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -11,7 +11,7 @@ export default class GameScene extends Phaser.Scene {
     this.snelheid = CONFIG.startSnelheid;
     this.afstand = 0; // in pixels
     this.tijdTotVolgende = CONFIG.hindernisInterval;
-    this.doorgangen = [HOOGTE / 2]; // midden van de laatste vrije doorgangen
+    this.kolomToestand = nieuweToestand(); // onthoudt doorgangen en de verdeling
 
     // Scrollend decor: strepen en bubbels
     this.decor = [];
@@ -111,10 +111,8 @@ export default class GameScene extends Phaser.Scene {
 
   // Maak een kolom hindernissen met gegarandeerd een doorgang (zie hindernissen.js)
   maakHindernis() {
-    const kolom = maakKolom(this.doorgangen, this.snelheid);
+    const kolom = maakKolom(this.kolomToestand, this.snelheid);
     if (!kolom) return; // geen eerlijke kolom gevonden: sla over
-    this.doorgangen.push(kolom.doorgang);
-    if (this.doorgangen.length > 10) this.doorgangen.shift();
 
     for (const item of kolom.items) {
       // Alle hindernissen van een kolom beginnen op dezelfde plek (linkerkant)

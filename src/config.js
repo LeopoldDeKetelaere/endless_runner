@@ -24,20 +24,16 @@ export const CONFIG = {
   // de duiker op dat moment kan halen (1 = precies genoeg, lager = makkelijker)
   bereikFactor: 0.5,
 
-  // Kans per kolom op een rots / boot (nu zeldzamer dan de zeedieren)
-  kansRots: 0.25,
-  kansBoot: 0.25,
-  // Aantal zeedieren per kolom (willekeurig tussen min en max)
+  // Kans per kolom op een rots of een boot. Rotsen en boten wisselen elkaar altijd af,
+  // dus er zijn precies evenveel van allebei (5 en 5 per 10).
+  kansRotsOfBoot: 0.4,
+  // Aantal zeedieren per kolom (willekeurig tussen min en max). Octopussen en vissen
+  // wisselen elkaar ook af, dus evenveel van allebei.
   minDieren: 1,
   maxDieren: 3,
-  // Van de zeedieren is dit het deel dat een octopus is (0.5 = half-half, 1 = alleen octopussen)
-  octopusAandeel: 0.5,
-  // Zeedieren zwemmen bij voorkeur rond het midden van het scherm.
-  // Spreiding in pixels rond het midden: kleiner = meer in het midden
-  dierMiddenSpreiding: 80,
-  // Kans dat de vrije doorgang naar de boven- of onderkant schuift (weg van het midden),
-  // zodat het midden niet altijd veilig is. 0 = willekeurig, 1 = altijd weg van het midden
-  doorgangWegVanMidden: 0.7,
+  // De vrije doorgang zwerft over het hele scherm naar een willekeurig doel.
+  // Kans per kolom dat hij een nieuw doel kiest (hoger = onrustiger)
+  doorgangNieuwDoel: 0.25,
 
   // Rotsen en boten nemen maximaal zoveel van de schermhoogte in (0.2 = 20%)
   maxRandHoogteFractie: 0.2,
