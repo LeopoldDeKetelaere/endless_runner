@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BREEDTE, HOOGTE, CONFIG } from '../config.js';
+import { maakKolom } from '../hindernissen.js';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -10,6 +11,7 @@ export default class GameScene extends Phaser.Scene {
     this.snelheid = CONFIG.startSnelheid;
     this.afstand = 0; // in pixels
     this.tijdTotVolgende = CONFIG.hindernisInterval;
+    this.vorigeDoorgang = HOOGTE / 2; // midden van de laatste vrije doorgang
 
     // Scrollend decor: strepen en bubbels
     this.decor = [];
@@ -28,7 +30,7 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.existing(this.duiker);
     this.duiker.body.setCollideWorldBounds(true); // niet buiten beeld
 
-    // Hindernissen (rode rechthoeken)
+    // Hindernissen (rotsen, boten en rode blokken)
     this.hindernissen = this.add.group();
     this.physics.add.overlap(this.duiker, this.hindernissen, () => this.gameOver());
 
@@ -98,16 +100,19 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  // Maak een kolom hindernissen met gegarandeerd een doorgang (zie hindernissen.js)
   maakHindernis() {
-    const hoogte = Phaser.Math.Between(CONFIG.hindernisMinHoogte, CONFIG.hindernisMaxHoogte);
-    const y = Phaser.Math.Between(hoogte / 2, HOOGTE - hoogte / 2);
-    const h = this.add.rectangle(
-      BREEDTE + CONFIG.hindernisBreedte, y,
-      CONFIG.hindernisBreedte, hoogte, CONFIG.kleurHindernis
-    );
-    this.physics.add.existing(h);
-    h.body.setAllowGravity(false);
-    this.hindernissen.add(h);
+    const kolom = maakKolom(this.vorigeDoorgang, this.snelheid);
+    if (!kolom) return; // geen eerlijke kolom gevonden: sla over
+    this.vorigeDoorgang = kolom.doorgang;
+
+    for (const item of kolom.items) {
+      // Alle hindernissen van een kolom beginnen op dezelfde plek (linkerkant)
+      const h = this.add.rectangle(BREEDTE + item.breedte / 2, item.y, item.breedte, item.hoogte, item.kleur);
+      this.physics.add.existing(h);
+      h.body.setAllowGravity(false);
+      this.hindernissen.add(h);
+    }
   }
 
   maakStreep(x) {
