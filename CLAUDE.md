@@ -10,7 +10,8 @@ Retro endless runner met placeholder-graphics (gekleurde rechthoeken), gebouwd m
 
 ## Doel van het project
 Gespeeld op een groot scherm op onze stand op een meerdaags B2B-event.
-- Spelers registreren zich (voornaam, achternaam, bedrijf, e-mail, toestemming).
+- Spelers registreren zich (voornaam, achternaam, bedrijf/horecazaak, e-mail, telefoonnummer, toestemming).
+- Op het scorebord staat per regel: "BEDRIJF (VOORNAAM)" en de score. Niets anders van de speler.
 - Er is een top 10 per dag en een algemene top 10. De winnaar krijgt een prijs.
 - Backend wordt later Firebase (Firestore + Authentication) met strikte security rules.
 - Persoonsgegevens en scores worden gescheiden opgeslagen.
