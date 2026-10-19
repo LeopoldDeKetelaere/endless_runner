@@ -5,7 +5,7 @@
 // spel gebruikt alleen de functies hieronder (allemaal async), dus daar verandert niets.
 //
 // Privacy: persoonsgegevens en scores staan APART opgeslagen.
-// - Spelers (voornaam, achternaam, bedrijf, e-mail, telefoon, toestemming) staan onder één sleutel.
+// - Spelers (voornaam, achternaam, bedrijf, e-mail, telefoon, toestemmingen) staan onder één sleutel.
 // - Scores bevatten alleen wat op het scorebord staat (bedrijf, voornaam, score, datum)
 //   plus het spelers-id. Nooit e-mail, telefoonnummer of achternaam.
 
@@ -44,11 +44,15 @@ function nieuwId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
 }
 
+const normaliseerEmail = (email) => String(email ?? '').trim().toLowerCase();
+
 // ---------------------------------------------------------------------------
 // Spelers
 // ---------------------------------------------------------------------------
 
-// gegevens: { voornaam, achternaam, bedrijf, email, telefoon, toestemming }
+// gegevens: { voornaam, achternaam, bedrijf, email, telefoon, toestemming, nieuwsbrief }
+// - toestemming: mag deelnemen aan de wedstrijd (ja/nee)
+// - nieuwsbrief: mogen we nieuws en aanbiedingen sturen (ja/nee)
 // Geeft het spelers-id terug.
 export async function registerPlayer(gegevens) {
   const voornaam = String(gegevens.voornaam ?? '').trim();
@@ -57,18 +61,43 @@ export async function registerPlayer(gegevens) {
   if (!voornaam || !bedrijf) throw new Error('Voornaam en bedrijf zijn verplicht');
 
   const id = nieuwId();
+  const nu = new Date().toISOString();
   const spelers = lees(SLEUTEL_SPELERS, {});
   spelers[id] = {
     voornaam,
     achternaam: String(gegevens.achternaam ?? '').trim(),
     bedrijf,
-    email: String(gegevens.email ?? '').trim(),
+    email: normaliseerEmail(gegevens.email),
     telefoon: String(gegevens.telefoon ?? '').trim(),
     toestemming: gegevens.toestemming === true,
-    geregistreerd: new Date().toISOString(),
+    nieuwsbrief: gegevens.nieuwsbrief === true,
+    toestemmingTijdstip: nu,
+    geregistreerd: nu,
   };
   schrijf(SLEUTEL_SPELERS, spelers);
   return id;
+}
+
+// Is dit e-mailadres al bekend? Dan geven we { id, voornaam } terug, anders null.
+// (Er komen bewust geen andere persoonsgegevens mee terug.)
+export async function findPlayerByEmail(email) {
+  const gezocht = normaliseerEmail(email);
+  if (!gezocht) return null;
+  const spelers = lees(SLEUTEL_SPELERS, {});
+  for (const [id, speler] of Object.entries(spelers)) {
+    if (speler.email === gezocht) return { id, voornaam: speler.voornaam };
+  }
+  return null;
+}
+
+// Terugkerende speler: werk alleen de nieuwsbriefkeuze en het tijdstip daarvan bij.
+// De andere gegevens blijven ongewijzigd, zodat de speler onder dezelfde naam op het scorebord blijft.
+export async function updateNewsletterConsent(spelerId, nieuwsbrief) {
+  const spelers = lees(SLEUTEL_SPELERS, {});
+  if (!spelers[spelerId]) throw new Error('Onbekende speler');
+  spelers[spelerId].nieuwsbrief = nieuwsbrief === true;
+  spelers[spelerId].toestemmingTijdstip = new Date().toISOString();
+  schrijf(SLEUTEL_SPELERS, spelers);
 }
 
 // ---------------------------------------------------------------------------

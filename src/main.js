@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import '@fontsource/press-start-2p/400.css'; // retro lettertype, zit in het project (werkt ook zonder internet)
 import { BREEDTE, HOOGTE, CONFIG } from './config.js';
 import StartScene from './scenes/StartScene.js';
+import RegistratieScene from './scenes/RegistratieScene.js';
 import GameScene from './scenes/GameScene.js';
 import GameOverScene from './scenes/GameOverScene.js';
 
@@ -26,6 +27,6 @@ lettertypeKlaar.then(() => {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    scene: [StartScene, GameScene, GameOverScene],
+    scene: [StartScene, RegistratieScene, GameScene, GameOverScene],
   });
 });

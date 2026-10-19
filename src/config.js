@@ -12,6 +12,11 @@ export const CONFIG = {
   // ZET OP false VOOR HET EVENT!
   testfunctieAan: true,
 
+  // Registratie
+  maxBedrijfTekens: 40,                 // maximale lengte van het bedrijf / de horecazaak
+  registratieInactiviteitSeconden: 60,  // zonder toets: alles wissen en terug naar het startscherm
+  welkomTerugSeconden: 2,               // hoe lang 'WELKOM TERUG' blijft staan
+
   // Duiker
   duikerSnelheid: 260,      // verticale snelheid (pixels per seconde)
   duikerBreedte: 40,

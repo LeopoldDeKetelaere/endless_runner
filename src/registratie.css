@@ -1,0 +1,105 @@
+/* Registratieformulier: ligt over het spelcanvas (800x450 spelpixels, door de code mee geschaald) */
+
+.reg-wrap {
+  position: fixed;
+  width: 800px;
+  height: 450px;
+  transform-origin: 0 0;
+  overflow: hidden;
+  z-index: 10;
+  box-sizing: border-box;
+  background: #0b1e4a;
+  color: #ffffff;
+  font-family: "Press Start 2P", monospace;
+  user-select: none;
+  cursor: none; /* er is geen muis */
+}
+.reg-wrap *, .reg-wrap *::before, .reg-wrap *::after { box-sizing: border-box; }
+
+.reg-scherm { display: none; position: absolute; inset: 0; padding: 18px 24px; }
+.reg-scherm.zichtbaar { display: block; }
+
+.reg-titel {
+  margin: 0 0 14px;
+  font-size: 20px;
+  font-weight: normal;
+  color: #ffe030;
+  text-shadow: 3px 3px 0 #000;
+}
+
+/* ---- Stap 1: velden ---- */
+.reg-rij { display: grid; grid-template-columns: 584px 1fr; column-gap: 12px; align-items: end; margin-bottom: 10px; }
+.reg-label { display: block; margin-bottom: 6px; font-size: 9px; color: #7fd4ff; }
+.reg-rij.actief .reg-label { color: #ffe030; }
+
+.reg-invoer {
+  display: block;
+  width: 100%;
+  height: 32px;
+  padding: 0 10px;
+  font: 14px "Press Start 2P", monospace;
+  color: #ffffff;
+  background: #06122e;
+  border: 3px solid #2a4a8c;
+  border-radius: 0;
+  outline: none;
+  caret-color: #ffe030;
+  user-select: text;
+  cursor: none;
+}
+.reg-rij.actief .reg-invoer {
+  border-color: #ffe030;
+  box-shadow: 0 0 0 3px rgba(255, 224, 48, 0.3), 0 0 16px rgba(255, 224, 48, 0.5);
+}
+.reg-rij.fout .reg-invoer { border-color: #ff5a5a; }
+.reg-rij.fout.actief .reg-invoer { border-color: #ffe030; }
+
+.reg-fout { min-height: 32px; display: flex; align-items: flex-end; font-size: 8px; line-height: 1.5; color: #ff6b6b; }
+
+/* ---- Hulpregel onderaan ---- */
+.reg-hulp {
+  position: absolute;
+  left: 0; right: 0; bottom: 14px;
+  margin: 0;
+  text-align: center;
+  font-size: 10px;
+  white-space: pre;
+  color: #7fd4ff;
+}
+
+/* ---- Stap 2: toestemming ---- */
+.reg-vraag { margin: 0 0 26px; font-size: 11px; line-height: 1.9; color: #ffffff; }
+.reg-keuze {
+  display: flex; align-items: center; gap: 14px;
+  height: 46px; margin-bottom: 10px; padding: 0 14px;
+  font-size: 14px; color: #9db4e0;
+  border: 3px solid transparent;
+}
+.reg-keuze.gekozen {
+  color: #ffe030;
+  background: rgba(255, 224, 48, 0.12);
+  border-color: #ffe030;
+  animation: reg-knipper 0.8s steps(1) infinite;
+}
+.reg-pijl { display: inline-block; width: 0; height: 0; border-style: solid; visibility: hidden; flex: none; }
+.reg-pijl.links { border-width: 9px 13px 9px 0; border-color: transparent #ffe030 transparent transparent; }
+.reg-pijl.rechts { border-width: 9px 0 9px 13px; border-color: transparent transparent transparent #ffe030; }
+.reg-keuze.gekozen .reg-pijl { visibility: visible; }
+.reg-melding { margin: 6px 0 0; font-size: 9px; color: #ff6b6b; min-height: 12px; }
+
+@keyframes reg-knipper { 50% { background: rgba(255, 224, 48, 0.28); } }
+
+/* ---- Grote boodschap in het midden (nee / welkom terug) ---- */
+.reg-scherm.reg-midden.zichtbaar { display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+.reg-groot { margin: 0; padding: 0 40px; font-size: 18px; line-height: 2.1; color: #ffe030; text-shadow: 3px 3px 0 #000; }
+
+/* ---- Privacyverklaring ---- */
+.reg-modal {
+  display: none; position: absolute; left: 80px; top: 36px; width: 640px; height: 378px;
+  padding: 18px 22px; background: #06122e; border: 4px solid #ffe030;
+  box-shadow: 0 0 0 4px #000, 0 0 30px rgba(0, 0, 0, 0.8);
+}
+.reg-modal.zichtbaar { display: block; }
+.reg-modal h2 { margin: 0 0 14px; font-size: 14px; font-weight: normal; color: #ffe030; }
+.reg-modal p { margin: 0 0 10px; font-size: 9px; line-height: 1.9; color: #ffffff; }
+.reg-modal .reg-hulp { bottom: 12px; }

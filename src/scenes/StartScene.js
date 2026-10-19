@@ -36,6 +36,7 @@ export default class StartScene extends Phaser.Scene {
 
   create() {
     this.afgesloten = false;
+    this.registry.remove('spelerId'); // een nieuwe speler moet zich eerst registreren
     this.events.once('shutdown', () => { this.afgesloten = true; });
     this.cameras.main.setBackgroundColor(CONFIG.kleurAchtergrond);
 
@@ -73,9 +74,9 @@ export default class StartScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.time.addEvent({ delay: 500, loop: true, callback: () => start.setVisible(!start.visible) });
 
-    // Spatie (of tik) gaat voorlopig rechtstreeks naar het spel
-    this.input.keyboard.on('keydown-SPACE', () => this.scene.start('GameScene'));
-    this.input.on('pointerdown', () => this.scene.start('GameScene'));
+    // Spatie (of tik) gaat naar de registratie
+    this.input.keyboard.on('keydown-SPACE', () => this.scene.start('RegistratieScene'));
+    this.input.on('pointerdown', () => this.scene.start('RegistratieScene'));
 
     // Testfunctie: toets T voegt nepspelers toe
     if (CONFIG.testfunctieAan) {
