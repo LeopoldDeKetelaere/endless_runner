@@ -126,7 +126,9 @@ export default class GameScene extends Phaser.Scene {
     this.hindernissen.clear(true, true); // verwijder alle hindernissen
     this.duiker.body.setVelocityY(0);
     this.duiker.setAlpha(1);
-    this.wachtTekst.setVisible(true);
+    // De tekst staat lager op het scherm, behalve als de duiker daar zit: dan erboven
+    const tekstY = this.duiker.y <= HOOGTE / 2 ? HOOGTE * 0.78 : HOOGTE * 0.22;
+    this.wachtTekst.setY(tekstY).setVisible(true);
     // Korte pauze, zodat een toets die nog ingedrukt is niet meteen doorgaat
     this.kanBevestigen = false;
     this.time.delayedCall(CONFIG.bevestigVertraging, () => { this.kanBevestigen = true; });
