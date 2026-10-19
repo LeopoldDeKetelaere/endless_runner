@@ -4,6 +4,14 @@ export const BREEDTE = 800;
 export const HOOGTE = 450;
 
 export const CONFIG = {
+  // Startscherm en scorebord
+  spelTitel: 'DUIKER RUN',
+  topAantal: 10,                // aantal regels per top
+  scorebordLettergrootte: 12,   // in pixels van het 800x450 spelscherm
+  // Testfunctie: toets T voegt 15 nepspelers met nepscores toe.
+  // ZET OP false VOOR HET EVENT!
+  testfunctieAan: true,
+
   // Duiker
   duikerSnelheid: 260,      // verticale snelheid (pixels per seconde)
   duikerBreedte: 40,

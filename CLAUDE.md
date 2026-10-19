@@ -16,13 +16,16 @@ Gespeeld op een groot scherm op onze stand op een meerdaags B2B-event.
 - Backend wordt later Firebase (Firestore + Authentication) met strikte security rules.
 - Persoonsgegevens en scores worden gescheiden opgeslagen.
 - E-mailadressen worden NOOIT op het scherm getoond.
-- Een registratiescène en scoreborden zijn nog niet gebouwd.
+- Nog te bouwen: registratiescène (en koppelen aan scoreService), score opslaan na het spel, Firebase-koppeling. Het scorebord op het startscherm bestaat al.
 
 ## Mappenstructuur
 - `index.html`: pagina met het `#game`-element, laadt `src/main.js`.
-- `src/main.js`: Phaser-instellingen (800x450, `Phaser.Scale.FIT`, Arcade Physics) en de lijst met scènes.
+- `src/main.js`: Phaser-instellingen (800x450, `Phaser.Scale.FIT`, Arcade Physics, pixelArt) en de lijst met scènes (StartScene, GameScene, GameOverScene). Laadt eerst het lettertype "Press Start 2P" (via het npm-pakket `@fontsource/press-start-2p`, dus zonder internet en zonder Google-verbinding).
 - `src/config.js`: ALLE instelbare waarden (snelheden, afmetingen, kleuren, levens, countdown, kansen).
+- `src/scoreService.js`: ALLE opslag van spelers en scores (async: `registerPlayer`, `submitScore`, `getTopScoresToday`, `getTopScoresAllTime`, `getRank`). Nu localStorage, later Firebase: de rest van het spel gebruikt alleen deze functies. Spelers en scores staan apart; een score bevat alleen bedrijf, voornaam, score, datum en spelers-id. "Vandaag" = dag in tijdzone Europe/Brussels. Per speler telt alleen de beste score in een top.
+- `src/testdata.js`: testfunctie (toets T op het startscherm) die 15 nepspelers toevoegt, alleen als `testfunctieAan` in config.js `true` is (VOOR HET EVENT OP false ZETTEN). Nepspelers hebben een e-mailadres op @test.invalid.
 - `src/hindernissen.js`: maakt kolommen hindernissen en garandeert altijd een doorgang (zie hieronder).
+- `src/scenes/StartScene.js`: eerste scherm: titel, "TOP 10 VANDAAG" links en "TOP 10 ALLER TIJDEN" rechts ("1. BEDRIJF (VOORNAAM) ..... score", lange namen ingekort met "…"), knipperende "DRUK OP SPATIE". Spatie/tik gaat voorlopig rechtstreeks naar het spel.
 - `src/scenes/GameScene.js`: het spel zelf (duiker, decor, hindernissen, levens, wachten/countdown/onkwetsbaar).
 - `src/scenes/GameOverScene.js`: eindscherm met score; spatie/tik om opnieuw te spelen.
 - `.claude/launch.json`: lokale configuratie om de dev-server te starten (niet in git).
