@@ -12,6 +12,9 @@ export default class GameScene extends Phaser.Scene {
     this.afstand = 0; // in pixels
     this.tijdTotVolgende = CONFIG.hindernisInterval;
     this.kolomToestand = nieuweToestand(); // onthoudt doorgangen en de verdeling
+    this.levens = CONFIG.levens;
+    this.fase = 'spelen';       // 'spelen' of 'countdown'
+    this.onkwetsbaarRest = 0;   // ms onkwetsbaarheid die nog over zijn
 
     // Scrollend decor: strepen en bubbels
     this.decor = [];
@@ -32,7 +35,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Hindernissen (rotsen, boten, octopussen en vissen)
     this.hindernissen = this.add.group();
-    this.physics.add.overlap(this.duiker, this.hindernissen, () => this.gameOver());
+    this.physics.add.overlap(this.duiker, this.hindernissen, () => this.geraakt());
 
     // Besturing
     this.pijlen = this.input.keyboard.createCursorKeys();
@@ -43,11 +46,31 @@ export default class GameScene extends Phaser.Scene {
       fontSize: '22px', color: '#ffffff',
     }).setDepth(10);
 
+    // Levens rechtsboven (een symbooltje per leven, verloren levens worden vaag)
+    this.levensSymbolen = [];
+    for (let i = 0; i < CONFIG.levens; i++) {
+      const symbool = this.add.text(BREEDTE - 12 - i * 30, 8, '♥', {
+        fontFamily: 'Arial, sans-serif', fontSize: '28px', color: '#ff4060',
+      }).setOrigin(1, 0).setDepth(10);
+      this.levensSymbolen.push(symbool);
+    }
+
+    // Grote countdown in het midden (staat verborgen tot er een leven verloren is)
+    this.countdownTekst = this.add.text(BREEDTE / 2, HOOGTE / 2, '', {
+      fontSize: '140px', color: '#ffffff', fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(20).setVisible(false);
+
     this.isKlaar = false;
   }
 
   update(tijd, delta) {
     if (this.isKlaar) return;
+
+    // Tijdens de countdown staat alles stil (ook de score)
+    if (this.fase === 'countdown') {
+      this.updateCountdown(delta);
+      return;
+    }
     const dt = delta / 1000;
 
     // Geleidelijk sneller
@@ -58,6 +81,71 @@ export default class GameScene extends Phaser.Scene {
     this.beweegDuiker();
     this.beweegDecor(dt);
     this.beheerHindernissen(delta);
+    this.updateOnkwetsbaar(delta);
+  }
+
+  // Onkwetsbaar: de duiker knippert tot de tijd om is
+  updateOnkwetsbaar(delta) {
+    if (this.onkwetsbaarRest <= 0) return;
+    this.onkwetsbaarRest -= delta;
+    if (this.onkwetsbaarRest <= 0) {
+      this.duiker.setAlpha(1);
+      return;
+    }
+    const stap = Math.floor(this.onkwetsbaarRest / CONFIG.knipperInterval);
+    this.duiker.setAlpha(stap % 2 === 0 ? 0.25 : 1);
+  }
+
+  // De duiker raakt een hindernis
+  geraakt() {
+    // Tijdens countdown of onkwetsbaarheid gebeurt er niets
+    if (this.isKlaar || this.fase !== 'spelen' || this.onkwetsbaarRest > 0) return;
+
+    this.levens--;
+    this.levensSymbolen[this.levens].setAlpha(0.2);
+    if (this.levens <= 0) {
+      this.gameOver();
+      return;
+    }
+    this.startCountdown();
+  }
+
+  // Alle hindernissen weg en 3 - 2 - 1 voordat het verdergaat
+  startCountdown() {
+    this.fase = 'countdown';
+    this.hindernissen.clear(true, true); // verwijder alle hindernissen
+    this.duiker.body.setVelocityY(0);
+    this.duiker.setAlpha(1);
+    this.countdownRest = CONFIG.countdownSeconden * 1000;
+    this.laatsteGetal = null;
+    this.countdownTekst.setVisible(true);
+    this.updateCountdown(0);
+  }
+
+  updateCountdown(delta) {
+    this.countdownRest -= delta;
+    if (this.countdownRest <= 0) {
+      this.hervatSpel();
+      return;
+    }
+    const getal = Math.ceil(this.countdownRest / 1000);
+    if (getal !== this.laatsteGetal) {
+      this.laatsteGetal = getal;
+      this.countdownTekst.setText(String(getal));
+    }
+  }
+
+  // Verder op dezelfde snelheid, maar even onkwetsbaar
+  hervatSpel() {
+    this.fase = 'spelen';
+    this.countdownTekst.setVisible(false);
+    this.onkwetsbaarRest = CONFIG.onkwetsbaarSeconden * 1000;
+    this.tijdTotVolgende = CONFIG.hindernisInterval;
+    // Er staan geen oude kolommen meer: de nieuwe doorgang begint bij de duiker
+    const half = CONFIG.minimaleOpening / 2;
+    const y = Phaser.Math.Clamp(this.duiker.y, half, HOOGTE - half);
+    this.kolomToestand.doorgangen = [y];
+    this.kolomToestand.doel = y;
   }
 
   // Pijltjes of aanraking: omhoog/omlaag

@@ -10,6 +10,12 @@ export const CONFIG = {
   duikerHoogte: 20,
   duikerPositieX: 0.2,      // 0.2 = 20% van links
 
+  // Levens
+  levens: 3,                // aantal levens bij de start
+  countdownSeconden: 3,     // countdown (3 - 2 - 1) na het verliezen van een leven
+  onkwetsbaarSeconden: 3,   // onkwetsbaar na de countdown (de duiker knippert)
+  knipperInterval: 120,     // ms per knipper-stap tijdens het onkwetsbaar zijn
+
   // Snelheid van de wereld (pixels per seconde)
   startSnelheid: 220,
   versnelling: 6,           // extra snelheid per seconde
