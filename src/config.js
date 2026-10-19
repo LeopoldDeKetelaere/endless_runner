@@ -12,6 +12,7 @@ export const CONFIG = {
 
   // Levens
   levens: 3,                // aantal levens bij de start
+  bevestigVertraging: 400,  // ms na een verloren leven voordat spatie/tik telt
   countdownSeconden: 3,     // countdown (3 - 2 - 1) na het verliezen van een leven
   onkwetsbaarSeconden: 3,   // onkwetsbaar na de countdown (de duiker knippert)
   knipperInterval: 120,     // ms per knipper-stap tijdens het onkwetsbaar zijn

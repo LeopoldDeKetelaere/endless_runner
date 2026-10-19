@@ -13,7 +13,7 @@ export default class GameScene extends Phaser.Scene {
     this.tijdTotVolgende = CONFIG.hindernisInterval;
     this.kolomToestand = nieuweToestand(); // onthoudt doorgangen en de verdeling
     this.levens = CONFIG.levens;
-    this.fase = 'spelen';       // 'spelen' of 'countdown'
+    this.fase = 'spelen';       // 'spelen', 'wachten' (op spatie) of 'countdown'
     this.onkwetsbaarRest = 0;   // ms onkwetsbaarheid die nog over zijn
 
     // Scrollend decor: strepen en bubbels
@@ -60,13 +60,23 @@ export default class GameScene extends Phaser.Scene {
       fontSize: '140px', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(20).setVisible(false);
 
+    // Tekst die getoond wordt als je een leven kwijt bent en eerst moet bevestigen
+    this.wachtTekst = this.add.text(BREEDTE / 2, HOOGTE / 2, 'Druk op spatie of tik om verder te spelen', {
+      fontSize: '28px', color: '#ffffff', stroke: '#0b1e4a', strokeThickness: 6,
+    }).setOrigin(0.5).setDepth(20).setVisible(false);
+
+    // Spatie of tik: na een verloren leven de countdown starten
+    this.input.keyboard.on('keydown-SPACE', () => this.bevestig());
+    this.input.on('pointerdown', () => this.bevestig());
+
     this.isKlaar = false;
   }
 
   update(tijd, delta) {
     if (this.isKlaar) return;
 
-    // Tijdens de countdown staat alles stil (ook de score)
+    // Tijdens het wachten en de countdown staat alles stil (ook de score)
+    if (this.fase === 'wachten') return;
     if (this.fase === 'countdown') {
       this.updateCountdown(delta);
       return;
@@ -107,15 +117,31 @@ export default class GameScene extends Phaser.Scene {
       this.gameOver();
       return;
     }
-    this.startCountdown();
+    this.startWachten();
   }
 
-  // Alle hindernissen weg en 3 - 2 - 1 voordat het verdergaat
-  startCountdown() {
-    this.fase = 'countdown';
+  // Alle hindernissen weg; het spel staat stil tot de speler op spatie drukt
+  startWachten() {
+    this.fase = 'wachten';
     this.hindernissen.clear(true, true); // verwijder alle hindernissen
     this.duiker.body.setVelocityY(0);
     this.duiker.setAlpha(1);
+    this.wachtTekst.setVisible(true);
+    // Korte pauze, zodat een toets die nog ingedrukt is niet meteen doorgaat
+    this.kanBevestigen = false;
+    this.time.delayedCall(CONFIG.bevestigVertraging, () => { this.kanBevestigen = true; });
+  }
+
+  // Spatie of tik tijdens het wachten: begin met de countdown
+  bevestig() {
+    if (this.fase !== 'wachten' || !this.kanBevestigen) return;
+    this.startCountdown();
+  }
+
+  // 3 - 2 - 1 voordat het verdergaat
+  startCountdown() {
+    this.fase = 'countdown';
+    this.wachtTekst.setVisible(false);
     this.countdownRest = CONFIG.countdownSeconden * 1000;
     this.laatsteGetal = null;
     this.countdownTekst.setVisible(true);

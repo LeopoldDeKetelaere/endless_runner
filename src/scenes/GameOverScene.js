@@ -8,7 +8,7 @@ export default class GameOverScene extends Phaser.Scene {
 
   create(data) {
     const midden = BREEDTE / 2;
-    this.add.text(midden, HOOGTE * 0.28, 'Game over', {
+    this.add.text(midden, HOOGTE * 0.28, 'Helaas, verloren', {
       fontSize: '56px', color: '#ffffff',
     }).setOrigin(0.5);
     this.add.text(midden, HOOGTE * 0.48, 'Score: ' + (data.score ?? 0), {
