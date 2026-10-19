@@ -5,9 +5,9 @@ export const HOOGTE = 450;
 
 export const CONFIG = {
   // Startscherm en scorebord
-  spelTitel: 'DUIKER RUN',
+  spelTitel: 'DUIKER SWIM MANIA',
   topAantal: 10,                // aantal regels per top
-  scorebordLettergrootte: 12,   // in pixels van het 800x450 spelscherm
+  scorebordLettergrootte: 9,   // in pixels van het 800x450 spelscherm
   // Testfunctie: toets T voegt 15 nepspelers met nepscores toe.
   // ZET OP false VOOR HET EVENT!
   testfunctieAan: true,
