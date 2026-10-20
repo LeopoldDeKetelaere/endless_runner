@@ -14,7 +14,8 @@ export const CONFIG = {
 
   // Registratie
   maxBedrijfTekens: 40,                 // maximale lengte van het bedrijf / de horecazaak
-  registratieInactiviteitSeconden: 60,  // zonder toets: alles wissen en terug naar het startscherm
+  registratieInactiviteitSeconden: 30,  // zonder toets: alles wissen en terug naar het startscherm
+  gameOverSeconden: 30,                 // na zoveel seconden gaat het game-over-scherm vanzelf naar het scorebord
   welkomTerugSeconden: 2,               // hoe lang 'WELKOM TERUG' blijft staan
 
   // Duiker
