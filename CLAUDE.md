@@ -16,12 +16,17 @@ Gespeeld op een groot scherm op onze stand op een meerdaags B2B-event.
 - Backend wordt later Firebase (Firestore + Authentication) met strikte security rules.
 - Persoonsgegevens en scores worden gescheiden opgeslagen.
 - E-mailadressen worden NOOIT op het scherm getoond.
+- Fase 2 (Firebase): verbinding en inloggen zijn klaar (Authentication met e-mail/wachtwoord voor het personeel). `scoreService` werkt nog op localStorage; Firestore en security rules komen nog.
 - Nog te bouwen: score opslaan na het spel (via `registry.get('spelerId')` en `submitScore`), rang tonen op het game-over-scherm, Firebase-koppeling. Het scorebord op het startscherm en de registratie bestaan al.
 
 ## Mappenstructuur
 - `index.html`: pagina met het `#game`-element, laadt `src/main.js`.
-- `src/main.js`: Phaser-instellingen (800x450, `Phaser.Scale.FIT`, Arcade Physics, pixelArt) en de lijst met scènes (StartScene, RegistratieScene, GameScene, GameOverScene). Laadt eerst het lettertype "Press Start 2P" (via het npm-pakket `@fontsource/press-start-2p`, dus zonder internet en zonder Google-verbinding).
+- `src/main.js`: Phaser-instellingen (800x450, `Phaser.Scale.FIT`, Arcade Physics, pixelArt) en de lijst met scènes (LoginScene, StartScene, RegistratieScene, GameScene, GameOverScene). Laadt eerst het lettertype "Press Start 2P" (via het npm-pakket `@fontsource/press-start-2p`, dus zonder internet en zonder Google-verbinding).
 - `src/config.js`: ALLE instelbare waarden (snelheden, afmetingen, kleuren, levens, countdown, kansen).
+- `src/firebase.js`: initialiseert Firebase met de `VITE_FIREBASE_*`-waarden uit `.env.local` (niet in Git; namen staan in `.env.example`; op Vercel onder Settings > Environment Variables). Exporteert o.a. `logIn`, `logOut`, `huidigeGebruiker` en `volgVerbinding` (bolletje op het startscherm: elke 15 s een bereikbaarheidscontrole). Zonder ingevulde waarden start Firebase niet en toont het spel een melding. Optioneel `VITE_FIREBASE_AUTH_EMULATOR_URL` voor testen met de emulator.
+- `src/laag.js`: maakt een HTML-laag die precies over het canvas ligt (voor login en uitlog-vraag).
+- `src/uitloggen.js`: verborgen sneltoets Ctrl+Shift+L = uitloggen met bevestiging (ENTER = JA, ESC = NEE); legt het spel stil zolang de vraag open staat.
+- `src/scenes/LoginScene.js`: eerste scherm als niemand is ingelogd: e-mail en wachtwoord (verborgen), alles met het toetsenbord, dezelfde aanpak als de registratie. Algemene foutmeldingen (verklappen niet of een e-mailadres bestaat). De login blijft bewaard op het toestel (Firebase-persistentie), dus ook offline na herstart nog ingelogd.
 - `src/scoreService.js`: ALLE opslag van spelers en scores (async: `registerPlayer`, `submitScore`, `getTopScoresToday`, `getTopScoresAllTime`, `getRank`). Nu localStorage, later Firebase: de rest van het spel gebruikt alleen deze functies. Spelers en scores staan apart; een score bevat alleen bedrijf, voornaam, score, datum en spelers-id. "Vandaag" = dag in tijdzone Europe/Brussels. Per speler telt alleen de beste score in een top.
 - `src/testdata.js`: testfunctie (toets T op het startscherm) die 15 nepspelers toevoegt, alleen als `testfunctieAan` in config.js `true` is (VOOR HET EVENT OP false ZETTEN). Nepspelers hebben een e-mailadres op @test.invalid.
 - `src/hindernissen.js`: maakt kolommen hindernissen en garandeert altijd een doorgang (zie hieronder).

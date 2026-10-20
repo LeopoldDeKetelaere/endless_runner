@@ -1,2 +1,6 @@
 node_modules
 dist
+
+# Geheime instellingen (Firebase-sleutels): nooit in Git
+.env.local
+.env.*.local

@@ -1,10 +1,12 @@
 import Phaser from 'phaser';
 import '@fontsource/press-start-2p/400.css'; // retro lettertype, zit in het project (werkt ook zonder internet)
 import { BREEDTE, HOOGTE, CONFIG } from './config.js';
+import LoginScene from './scenes/LoginScene.js';
 import StartScene from './scenes/StartScene.js';
 import RegistratieScene from './scenes/RegistratieScene.js';
 import GameScene from './scenes/GameScene.js';
 import GameOverScene from './scenes/GameOverScene.js';
+import { installeerUitloggen } from './uitloggen.js';
 
 // Wacht kort tot het lettertype geladen is, zodat de eerste tekst meteen goed staat
 // (na maximaal 2 seconden starten we toch)
@@ -14,7 +16,7 @@ const lettertypeKlaar = Promise.race([
 ]);
 
 lettertypeKlaar.then(() => {
-  new Phaser.Game({
+  const spel = new Phaser.Game({
     type: Phaser.AUTO,
     width: BREEDTE,
     height: HOOGTE,
@@ -27,6 +29,7 @@ lettertypeKlaar.then(() => {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    scene: [StartScene, RegistratieScene, GameScene, GameOverScene],
+    scene: [LoginScene, StartScene, RegistratieScene, GameScene, GameOverScene],
   });
+  installeerUitloggen(spel); // verborgen sneltoets Ctrl+Shift+L
 });

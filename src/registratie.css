@@ -103,3 +103,14 @@
 .reg-modal h2 { margin: 0 0 14px; font-size: 14px; font-weight: normal; color: #ffe030; }
 .reg-modal p { margin: 0 0 10px; font-size: 9px; line-height: 1.9; color: #ffffff; }
 .reg-modal .reg-hulp { bottom: 12px; }
+
+/* ---- Inloggen (zelfde stijl als de registratie) ---- */
+.reg-scherm.login .reg-titel { margin-bottom: 46px; }
+.login-melding { min-height: 44px; margin: 20px 0 0; font-size: 11px; line-height: 1.8; color: #ff6b6b; }
+.login-melding.neutraal { color: #7fd4ff; }
+
+/* ---- Laag met een bevestiging bovenop alles (uitloggen) ---- */
+.reg-wrap.laag-boven { z-index: 20; background: rgba(6, 18, 46, 0.78); }
+.reg-wrap.laag-boven .reg-modal { left: 120px; top: 120px; width: 560px; height: 210px; text-align: center; }
+.reg-wrap.laag-boven .reg-modal h2 { margin: 24px 0 22px; font-size: 20px; }
+.reg-wrap.laag-boven .reg-modal p.groot { font-size: 12px; color: #ffe030; line-height: 2; }
