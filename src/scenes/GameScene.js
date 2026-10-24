@@ -16,6 +16,7 @@ export default class GameScene extends Phaser.Scene {
     this.levens = CONFIG.levens;
     this.fase = 'spelen';       // 'spelen', 'wachten' (op spatie) of 'countdown'
     this.onkwetsbaarRest = 0;   // ms onkwetsbaarheid die nog over zijn
+    this.eersteStart = true;    // de start van een spel: wel een countdown, maar geen onkwetsbaarheid
 
     // Scrollend decor: strepen en bubbels
     this.decor = [];
@@ -71,6 +72,9 @@ export default class GameScene extends Phaser.Scene {
     this.input.on('pointerdown', () => this.bevestig());
 
     this.isKlaar = false;
+
+    // Het spel begint met een countdown 3 - 2 - 1, zodat de speler zich kan voorbereiden
+    this.startCountdown();
   }
 
   update(tijd, delta) {
@@ -164,11 +168,12 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  // Verder op dezelfde snelheid, maar even onkwetsbaar
+  // Verder op dezelfde snelheid. Na een verloren leven even onkwetsbaar, bij de start niet.
   hervatSpel() {
     this.fase = 'spelen';
     this.countdownTekst.setVisible(false);
-    this.onkwetsbaarRest = CONFIG.onkwetsbaarSeconden * 1000;
+    this.onkwetsbaarRest = this.eersteStart ? 0 : CONFIG.onkwetsbaarSeconden * 1000;
+    this.eersteStart = false;
     this.tijdTotVolgende = CONFIG.hindernisInterval;
     // Er staan geen oude kolommen meer: de nieuwe doorgang begint bij de duiker
     const half = CONFIG.minimaleOpening / 2;

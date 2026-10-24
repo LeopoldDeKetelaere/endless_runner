@@ -5,7 +5,7 @@ Retro endless runner met placeholder-graphics (gekleurde rechthoeken), gebouwd m
 ## Spel
 - Een duiker (geel) zwemt naar rechts, blijft op ~20% van links; achtergrond en hindernissen scrollen naar links. De speler beweegt omhoog/omlaag (pijltjes, of op mobiel: bovenste helft van het scherm = omhoog, onderste helft = omlaag).
 - Hindernissen: rotsen (grijs, vanaf de bodem), bootrompen (bruin, vanaf de bovenkant), octopussen (paars, dobberen) en vissen (oranje, sneller dan de achtergrond).
-- 3 levens (hartjes rechtsboven). Na een botsing met levens over: hindernissen weg, spel staat stil tot spatie/tik, dan countdown 3-2-1, daarna 3 seconden onkwetsbaar (knipperen). Bij het laatste leven: game-over-scherm met eindscore.
+- Een spel begint met een countdown 3-2-1 (geen onkwetsbaarheid). 3 levens (hartjes rechtsboven). Na een botsing met levens over: hindernissen weg, spel staat stil tot spatie/tik, dan countdown 3-2-1, daarna 3 seconden onkwetsbaar (knipperen). Bij het laatste leven: game-over-scherm met eindscore.
 - Het spel wordt geleidelijk sneller. Score = afgelegde afstand (telt niet tijdens wachten/countdown).
 
 ## Doel van het project
