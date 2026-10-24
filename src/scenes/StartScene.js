@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { BREEDTE, HOOGTE, CONFIG } from '../config.js';
-import { getTopScoresToday, getTopScoresAllTime } from '../scoreService.js';
+import { getTopScoresToday, getTopScoresAllTime, volgSchrijfFouten } from '../scoreService.js';
 import { voegTestspelersToe } from '../testdata.js';
 import { volgVerbinding } from '../firebase.js';
 
@@ -77,6 +77,17 @@ export default class StartScene extends Phaser.Scene {
       bolletje.setFillStyle(verbonden === true ? 0x3fdc5a : verbonden === false ? 0xff4040 : 0x555555);
     });
     this.events.once('shutdown', stopVolgen);
+
+    // Klein rood bericht rechtsonder als het doorsturen van scores naar de server is mislukt
+    // (bijvoorbeeld door de security rules). Zo blijft zo'n fout niet onopgemerkt.
+    const opslagFout = this.add.text(BREEDTE - MARGE, HOOGTE - 12, '', {
+      fontFamily: LETTERTYPE, fontSize: '8px', color: '#ff6b6b',
+    }).setOrigin(1, 1);
+    const stopFouten = volgSchrijfFouten((aantal) => {
+      if (this.afgesloten) return;
+      opslagFout.setText(aantal > 0 ? `OPSLAGFOUT (${aantal})` : '');
+    });
+    this.events.once('shutdown', stopFouten);
 
     // Knipperende tekst
     const start = this.add.text(BREEDTE / 2, HOOGTE - 34, 'DRUK OP SPATIE', {

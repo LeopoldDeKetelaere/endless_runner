@@ -2,7 +2,9 @@ import { registerPlayer, submitScore } from './scoreService.js';
 
 // Testfunctie: voegt 15 nepspelers met nepscores toe (zie 'testfunctieAan' in config.js).
 // Sommige scores zijn van gisteren of eergisteren, zodat 'vandaag' en 'aller tijden' verschillen.
-// Ze hebben een e-mailadres op @test.invalid, zodat je ze later makkelijk herkent.
+// Alles wat hier wordt aangemaakt krijgt in Firestore het veld test: true (en de spelers een
+// e-mailadres op @test.invalid), zodat je testdata later makkelijk kunt herkennen en wissen.
+// Een tweede keer op T drukken maakt geen dubbele spelers: het spelers-id hangt aan het e-mailadres.
 
 // [bedrijf, voornaam, [[score, dagen geleden], ...]]
 const NEPSPELERS = [
@@ -25,15 +27,16 @@ const NEPSPELERS = [
 
 export async function voegTestspelersToe() {
   const nu = Date.now();
-  for (const [bedrijf, voornaam, scores] of NEPSPELERS) {
+  // De spelers tegelijk (sneller bij trage wifi); de scores van één speler wel na elkaar
+  await Promise.all(NEPSPELERS.map(async ([bedrijf, voornaam, scores]) => {
     const id = await registerPlayer({
       voornaam, achternaam: 'Testpersoon', bedrijf,
-      email: `${voornaam.toLowerCase()}@test.invalid`, telefoon: '0400 00 00 00', toestemming: true,
+      email: `${voornaam.toLowerCase()}@test.invalid`, telefoon: '0400 00 00 00', toestemming: true, test: true,
     });
     for (const [score, dagenGeleden] of scores) {
       // Een uur extra per dag terug, zodat 'gisteren' nooit per ongeluk 'vandaag' is
       const datum = nu - (dagenGeleden === 0 ? 0 : dagenGeleden * 24 + 1) * 3600e3;
-      await submitScore(id, score, { datum });
+      await submitScore(id, score, { datum, test: true });
     }
-  }
+  }));
 }

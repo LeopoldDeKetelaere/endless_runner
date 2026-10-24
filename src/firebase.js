@@ -7,6 +7,9 @@ import {
   getAuth, connectAuthEmulator, setPersistence, browserLocalPersistence,
   signInWithEmailAndPassword, signOut,
 } from 'firebase/auth';
+import {
+  initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager,
+} from 'firebase/firestore';
 
 const instellingen = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -21,6 +24,21 @@ export const firebaseGeconfigureerd = Object.values(instellingen)
 
 export const app = firebaseGeconfigureerd ? initializeApp(instellingen) : null;
 export const auth = app ? getAuth(app) : null;
+
+// De database (Firestore) met offline-cache: scores worden eerst lokaal in de browser bewaard
+// en vanzelf doorgestuurd zodra de wifi terug is. 'MultipleTabManager' zorgt dat het ook
+// werkt als de pagina per ongeluk in twee tabbladen openstaat.
+function maakDatabase() {
+  if (!app) return null;
+  try {
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+    });
+  } catch {
+    return getFirestore(app); // al eerder gestart (bv. na een herlading tijdens het ontwikkelen)
+  }
+}
+export const db = maakDatabase();
 
 // Alleen voor testen met de Firebase-emulator (zie .env.example)
 const emulatorUrl = import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_URL;

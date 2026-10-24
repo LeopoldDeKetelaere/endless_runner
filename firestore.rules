@@ -1,0 +1,77 @@
+rules_version = '2';
+
+// Security rules voor Firestore. Plak dit in de Firebase-console:
+// Firestore Database > Rules > (inhoud vervangen) > Publish.
+//
+// Uitgangspunten:
+// - Alleen ingelogd personeel (Firebase Authentication) heeft toegang. Niemand anders kan iets lezen of schrijven.
+// - Het scorebord (leaderboard...) mag alleen bedrijf, voornaam, score en tijdstip bevatten:
+//   e-mail, telefoon en achternaam kunnen daar NIET terechtkomen.
+// - Een bestaande speler kan alleen zijn nieuwsbriefkeuze en het tijdstip daarvan wijzigen.
+// - Een score op het scorebord kan alleen hoger worden, nooit lager.
+// - Niets kan via de app worden verwijderd (testdata wis je in de Firebase-console).
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function personeel() {
+      return request.auth != null;
+    }
+
+    // Een scorebordregel: enkel wat op het scherm komt (test: true is toegestaan voor testdata)
+    function geldigBord(d) {
+      return d.keys().hasAll(['bedrijf', 'voornaam', 'score', 'bijgewerktOp'])
+        && d.keys().hasOnly(['bedrijf', 'voornaam', 'score', 'bijgewerktOp', 'test'])
+        && d.bedrijf is string && d.bedrijf.size() > 0 && d.bedrijf.size() <= 100
+        && d.voornaam is string && d.voornaam.size() > 0 && d.voornaam.size() <= 100
+        && d.score is int && d.score >= 0
+        && d.bijgewerktOp is timestamp;
+    }
+
+    // Persoonsgegevens
+    match /players/{spelerId} {
+      allow read: if personeel();
+      allow create: if personeel()
+        && request.resource.data.keys().hasAll(['voornaam', 'achternaam', 'bedrijf', 'email', 'telefoon',
+          'toestemmingDeelname', 'nieuwsbrief', 'toestemmingTijdstip', 'aangemaaktOp'])
+        && request.resource.data.keys().hasOnly(['voornaam', 'achternaam', 'bedrijf', 'email', 'telefoon',
+          'toestemmingDeelname', 'nieuwsbrief', 'toestemmingTijdstip', 'aangemaaktOp', 'test'])
+        && request.resource.data.toestemmingDeelname == true
+        && request.resource.data.nieuwsbrief is bool;
+      allow update: if personeel()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nieuwsbrief', 'toestemmingTijdstip'])
+        && request.resource.data.nieuwsbrief is bool;
+      allow delete: if false;
+    }
+
+    // Logboek van gespeelde spellen
+    match /games/{spelId} {
+      allow read: if personeel();
+      allow create: if personeel()
+        && request.resource.data.keys().hasAll(['spelerId', 'score', 'dag', 'gespeeldOp'])
+        && request.resource.data.keys().hasOnly(['spelerId', 'score', 'dag', 'gespeeldOp', 'test'])
+        && request.resource.data.score is int && request.resource.data.score >= 0
+        && request.resource.data.dag is string
+        && request.resource.data.gespeeldOp is timestamp;
+      allow update, delete: if false;
+    }
+
+    // Scorebord aller tijden
+    match /leaderboardAllTime/{spelerId} {
+      allow read: if personeel();
+      allow create: if personeel() && geldigBord(request.resource.data);
+      allow update: if personeel() && geldigBord(request.resource.data)
+        && request.resource.data.score > resource.data.score;
+      allow delete: if false;
+    }
+
+    // Scorebord per dag
+    match /leaderboardDaily/{dag}/entries/{spelerId} {
+      allow read: if personeel();
+      allow create: if personeel() && geldigBord(request.resource.data);
+      allow update: if personeel() && geldigBord(request.resource.data)
+        && request.resource.data.score > resource.data.score;
+      allow delete: if false;
+    }
+  }
+}
