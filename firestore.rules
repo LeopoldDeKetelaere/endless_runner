@@ -3,75 +3,138 @@ rules_version = '2';
 // Security rules voor Firestore. Plak dit in de Firebase-console:
 // Firestore Database > Rules > (inhoud vervangen) > Publish.
 //
+// VOOR HET PUBLICEREN: vervang hieronder UID_STAND en UID_ADMIN door de echte gebruikers-id's
+// (Authentication > Users > kolom "User UID"). Zolang dat niet gebeurd is, heeft NIEMAND toegang.
+//
 // Uitgangspunten:
-// - Alleen ingelogd personeel (Firebase Authentication) heeft toegang. Niemand anders kan iets lezen of schrijven.
-// - Het scorebord (leaderboard...) mag alleen bedrijf, voornaam, score en tijdstip bevatten:
-//   e-mail, telefoon en achternaam kunnen daar NIET terechtkomen.
-// - Een bestaande speler kan alleen zijn nieuwsbriefkeuze en het tijdstip daarvan wijzigen.
-// - Een score op het scorebord kan alleen hoger worden, nooit lager.
-// - Niets kan via de app worden verwijderd (testdata wis je in de Firebase-console).
+// - Alles is verboden, tenzij hieronder uitdrukkelijk toegestaan.
+// - Wie niet is ingelogd, kan niets lezen of schrijven.
+// - Het stand-account (het spel op de stand) mag alleen wat het spel echt nodig heeft.
+// - Het admin-account mag lezen en verwijderen. Alleen het admin-account mag iets verwijderen.
+// - Het scorebord mag alleen bedrijf, voornaam, score en tijdstip bevatten (nooit e-mail, telefoon of achternaam).
 
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function personeel() {
-      return request.auth != null;
+    // ---- Wie is wie ----
+    function stand() {
+      return request.auth != null && request.auth.uid == 'UID_STAND';
+    }
+    function admin() {
+      return request.auth != null && request.auth.uid == 'UID_ADMIN';
     }
 
-    // Een scorebordregel: enkel wat op het scherm komt (test: true is toegestaan voor testdata)
+    // ---- Hulpfuncties ----
+
+    // Hoogste score die we geloofwaardig vinden. Score = afgelegde afstand / 50. Op topsnelheid
+    // (800 px/s) is dat 16 punten per seconde; de opbouw naar topsnelheid duurt ongeveer 97 seconden
+    // en is goed voor 986 punten. 20000 punten komt neer op ongeveer 21 minuten non-stop spelen
+    // zonder een leven te verliezen. Wijzig je de snelheden in config.js, reken dit dan opnieuw uit.
+    function maxScore() {
+      return 20000;
+    }
+
+    function tekst(waarde, min, max) {
+      return waarde is string && waarde.size() >= min && waarde.size() <= max;
+    }
+    function geheelGetal(waarde, min, max) {
+      return waarde is int && waarde >= min && waarde <= max;
+    }
+    // Spelers-id = SHA-256 van het e-mailadres: 64 tekens uit 0-9 en a-f
+    function geldigId(id) {
+      return id.matches('^[0-9a-f]{64}$');
+    }
+    // Het veld test mag ontbreken (gewone data) of true zijn (testdata)
+    function testVeldOk(d) {
+      return !('test' in d) || d.test == true;
+    }
+
+    // Een nieuwe speler: alle verplichte velden, juiste soort, redelijke lengte, toestemming = true
+    function geldigeSpeler(d) {
+      return d.keys().hasAll(['voornaam', 'achternaam', 'bedrijf', 'email', 'telefoon',
+                              'toestemmingDeelname', 'nieuwsbrief', 'toestemmingTijdstip', 'aangemaaktOp'])
+        && d.keys().hasOnly(['voornaam', 'achternaam', 'bedrijf', 'email', 'telefoon',
+                             'toestemmingDeelname', 'nieuwsbrief', 'toestemmingTijdstip', 'aangemaaktOp', 'test'])
+        && tekst(d.voornaam, 1, 100)
+        && tekst(d.achternaam, 1, 100)
+        && tekst(d.bedrijf, 1, 100)
+        && tekst(d.email, 5, 100) && d.email.matches('^[^@ ]+@[^@ ]+[.][^@ ]{2,}$')
+        && tekst(d.telefoon, 8, 20) && d.telefoon.matches('^[+]?[0-9]{8,17}$')
+        && d.toestemmingDeelname == true
+        && d.nieuwsbrief is bool
+        && d.toestemmingTijdstip is timestamp
+        && d.aangemaaktOp is timestamp
+        && testVeldOk(d);
+    }
+
+    // Een gespeeld spel in het logboek
+    function geldigSpel(d) {
+      return d.keys().hasAll(['spelerId', 'score', 'dag', 'gespeeldOp'])
+        && d.keys().hasOnly(['spelerId', 'score', 'dag', 'gespeeldOp', 'test'])
+        && geldigId(d.spelerId)
+        && geheelGetal(d.score, 0, maxScore())
+        && tekst(d.dag, 10, 10) && d.dag.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && d.gespeeldOp is timestamp
+        && testVeldOk(d);
+    }
+
+    // Een scorebordregel: enkel wat op het scherm komt
     function geldigBord(d) {
       return d.keys().hasAll(['bedrijf', 'voornaam', 'score', 'bijgewerktOp'])
         && d.keys().hasOnly(['bedrijf', 'voornaam', 'score', 'bijgewerktOp', 'test'])
-        && d.bedrijf is string && d.bedrijf.size() > 0 && d.bedrijf.size() <= 100
-        && d.voornaam is string && d.voornaam.size() > 0 && d.voornaam.size() <= 100
-        && d.score is int && d.score >= 0
-        && d.bijgewerktOp is timestamp;
+        && tekst(d.bedrijf, 1, 100)
+        && tekst(d.voornaam, 1, 100)
+        && geheelGetal(d.score, 0, maxScore())
+        && d.bijgewerktOp is timestamp
+        && testVeldOk(d);
     }
 
-    // Persoonsgegevens
+    // ---- Persoonsgegevens ----
     match /players/{spelerId} {
-      allow read: if personeel();
-      allow create: if personeel()
-        && request.resource.data.keys().hasAll(['voornaam', 'achternaam', 'bedrijf', 'email', 'telefoon',
-          'toestemmingDeelname', 'nieuwsbrief', 'toestemmingTijdstip', 'aangemaaktOp'])
-        && request.resource.data.keys().hasOnly(['voornaam', 'achternaam', 'bedrijf', 'email', 'telefoon',
-          'toestemmingDeelname', 'nieuwsbrief', 'toestemmingTijdstip', 'aangemaaktOp', 'test'])
-        && request.resource.data.toestemmingDeelname == true
-        && request.resource.data.nieuwsbrief is bool;
-      allow update: if personeel()
+      // Eén speler opzoeken mag (stand en admin). De hele lijst bekijken mag alleen de admin.
+      allow get: if stand() || admin();
+      allow list: if admin();
+      // Nieuwe speler aanmaken: alleen de stand, met geldige gegevens
+      allow create: if stand() && geldigId(spelerId) && geldigeSpeler(request.resource.data);
+      // Bestaande speler: de stand mag enkel nieuwsbrief en toestemmingTijdstip wijzigen
+      allow update: if stand()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nieuwsbrief', 'toestemmingTijdstip'])
-        && request.resource.data.nieuwsbrief is bool;
-      allow delete: if false;
+        && request.resource.data.nieuwsbrief is bool
+        && request.resource.data.toestemmingTijdstip is timestamp;
+      allow delete: if admin();
     }
 
-    // Logboek van gespeelde spellen
+    // ---- Logboek van gespeelde spellen ----
     match /games/{spelId} {
-      allow read: if personeel();
-      allow create: if personeel()
-        && request.resource.data.keys().hasAll(['spelerId', 'score', 'dag', 'gespeeldOp'])
-        && request.resource.data.keys().hasOnly(['spelerId', 'score', 'dag', 'gespeeldOp', 'test'])
-        && request.resource.data.score is int && request.resource.data.score >= 0
-        && request.resource.data.dag is string
-        && request.resource.data.gespeeldOp is timestamp;
-      allow update, delete: if false;
+      allow get, list: if admin();
+      allow create: if stand() && geldigSpel(request.resource.data); // de stand mag enkel aanmaken
+      allow update: if false;
+      allow delete: if admin();
     }
 
-    // Scorebord aller tijden
+    // ---- Scorebord aller tijden ----
     match /leaderboardAllTime/{spelerId} {
-      allow read: if personeel();
-      allow create: if personeel() && geldigBord(request.resource.data);
-      allow update: if personeel() && geldigBord(request.resource.data)
+      allow get, list: if stand() || admin();
+      allow create: if stand() && geldigId(spelerId) && geldigBord(request.resource.data);
+      // Bijwerken alleen als de nieuwe score hoger is dan de bestaande
+      allow update: if stand() && geldigBord(request.resource.data)
         && request.resource.data.score > resource.data.score;
-      allow delete: if false;
+      allow delete: if admin();
     }
 
-    // Scorebord per dag
+    // ---- Scorebord per dag ----
     match /leaderboardDaily/{dag}/entries/{spelerId} {
-      allow read: if personeel();
-      allow create: if personeel() && geldigBord(request.resource.data);
-      allow update: if personeel() && geldigBord(request.resource.data)
+      allow get, list: if stand() || admin();
+      allow create: if stand() && geldigId(spelerId) && dag.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && geldigBord(request.resource.data);
+      allow update: if stand() && geldigBord(request.resource.data)
         && request.resource.data.score > resource.data.score;
-      allow delete: if false;
+      allow delete: if admin();
+    }
+
+    // ---- Al het andere is verboden ----
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

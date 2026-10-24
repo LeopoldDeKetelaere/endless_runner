@@ -31,7 +31,7 @@ export async function voegTestspelersToe() {
   await Promise.all(NEPSPELERS.map(async ([bedrijf, voornaam, scores]) => {
     const id = await registerPlayer({
       voornaam, achternaam: 'Testpersoon', bedrijf,
-      email: `${voornaam.toLowerCase()}@test.invalid`, telefoon: '0400 00 00 00', toestemming: true, test: true,
+      email: `${voornaam.toLowerCase()}@test.invalid`, telefoon: '0400000000', toestemming: true, test: true,
     });
     for (const [score, dagenGeleden] of scores) {
       // Een uur extra per dag terug, zodat 'gisteren' nooit per ongeluk 'vandaag' is
