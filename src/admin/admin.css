@@ -1,0 +1,135 @@
+/* Adminpagina: eenvoudig en overzichtelijk, werkt met muis en op gsm */
+
+:root {
+  --achtergrond: #f3f5f9;
+  --kaart: #ffffff;
+  --tekst: #1d2433;
+  --zacht: #5b6578;
+  --rand: #d9deea;
+  --primair: #1f5fd1;
+  --gevaar: #c62828;
+  --gevaar-licht: #fdecec;
+  --info: #1f5fd1;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font: 16px/1.5 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  color: var(--tekst);
+  background: var(--achtergrond);
+}
+
+h1, h2 { margin: 0 0 0.5rem; line-height: 1.25; }
+h1 { font-size: 1.5rem; }
+h2 { font-size: 1.15rem; }
+
+/* ---- Kaarten en inloggen ---- */
+.kaart {
+  background: var(--kaart);
+  border: 1px solid var(--rand);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+.kaart.smal { max-width: 380px; margin: 12vh auto 0; padding: 1.5rem; }
+.gevaar-kaart { border-color: #e6b1b1; background: #fffafa; }
+.uitleg, .leeg { color: var(--zacht); }
+
+/* ---- Formulieren ---- */
+.veld { display: block; margin-bottom: 0.9rem; }
+.veld > span { display: block; margin-bottom: 0.25rem; font-size: 0.9rem; color: var(--zacht); }
+.veld.rij { display: flex; align-items: center; gap: 0.6rem; margin: 0 0 0.75rem; }
+.veld.rij > span { margin: 0; }
+input, select {
+  font: inherit;
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid var(--rand);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--tekst);
+}
+.veld.rij select { width: auto; min-width: 12rem; }
+input:focus, select:focus, button:focus-visible { outline: 3px solid rgba(31, 95, 209, 0.35); outline-offset: 1px; }
+
+/* ---- Knoppen ---- */
+.knop {
+  font: inherit;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--rand);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--tekst);
+  cursor: pointer;
+}
+.knop:hover:not(:disabled) { background: #eef2fa; }
+.knop:disabled { opacity: 0.55; cursor: not-allowed; }
+.knop.primair { background: var(--primair); border-color: var(--primair); color: #fff; }
+.knop.primair:hover:not(:disabled) { background: #194fb0; }
+.knop.gevaar { color: var(--gevaar); border-color: #e6b1b1; }
+.knop.gevaar:hover:not(:disabled) { background: var(--gevaar-licht); }
+.knop.breed { width: 100%; }
+.knop.klein { padding: 0.25rem 0.55rem; font-size: 0.85rem; }
+
+/* ---- Meldingen ---- */
+.melding { min-height: 1.5rem; margin: 0.75rem 0 0; }
+.melding.fout { color: var(--gevaar); }
+.melding.info { color: var(--info); }
+
+/* ---- Kop en tabbladen ---- */
+.kop {
+  display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap;
+  padding: 0.75rem 1rem; background: var(--kaart); border-bottom: 1px solid var(--rand);
+}
+.kop h1 { margin: 0; }
+.kop-rechts { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.wie { color: var(--zacht); font-size: 0.9rem; word-break: break-all; }
+
+.tabs { display: flex; gap: 0.25rem; padding: 0.5rem 1rem 0; border-bottom: 1px solid var(--rand); background: var(--kaart); overflow-x: auto; }
+.tab {
+  font: inherit; padding: 0.55rem 1rem; border: 0; border-bottom: 3px solid transparent;
+  background: none; color: var(--zacht); cursor: pointer; white-space: nowrap;
+}
+.tab.actief { color: var(--primair); border-bottom-color: var(--primair); font-weight: 600; }
+
+.paneel { max-width: 1000px; margin: 1rem auto; padding: 0 1rem; }
+.balk { display: flex; justify-content: flex-end; margin-bottom: 0.75rem; }
+
+/* ---- Tabel ---- */
+.tabel-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 0.5rem 0.6rem; text-align: left; border-bottom: 1px solid var(--rand); }
+th { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--zacht); }
+tbody tr:nth-child(even) { background: #f8f9fc; }
+td:nth-child(1), td:nth-child(4) { font-variant-numeric: tabular-nums; }
+.badge { background: #fff3cd; color: #7a5b00; border: 1px solid #f0d98a; border-radius: 999px; padding: 0.05rem 0.5rem; font-size: 0.8rem; }
+
+/* Op een smal scherm (gsm) wordt elke regel een blokje */
+@media (max-width: 640px) {
+  .kaart { padding: 0.9rem; }
+  thead { display: none; }
+  table, tbody, tr, td { display: block; width: 100%; }
+  tr { border: 1px solid var(--rand); border-radius: 8px; margin-bottom: 0.6rem; padding: 0.4rem 0.6rem; background: #fff !important; }
+  td { border: 0; padding: 0.15rem 0; display: flex; justify-content: space-between; gap: 1rem; }
+  td::before { content: attr(data-label); color: var(--zacht); font-size: 0.85rem; }
+  td:empty { display: none; }
+  td:last-child::before { content: none; }
+  td:last-child { justify-content: flex-end; padding-top: 0.4rem; }
+}
+
+/* ---- Bevestigingsvenster ---- */
+.overlay {
+  position: fixed; inset: 0; background: rgba(20, 28, 45, 0.55);
+  display: flex; align-items: center; justify-content: center; padding: 1rem; z-index: 50;
+}
+.venster {
+  background: var(--kaart); border-radius: 12px; padding: 1.25rem; width: min(480px, 100%);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3); max-height: 90vh; overflow: auto;
+}
+.venster p { margin: 0.4rem 0; }
+.vink { display: flex; gap: 0.6rem; align-items: flex-start; margin: 0.9rem 0; cursor: pointer; }
+.vink input { width: auto; margin-top: 0.3rem; }
+.tekstveld { margin: 0.25rem 0 0.5rem; }
+.knoppen { display: flex; justify-content: flex-end; gap: 0.6rem; margin-top: 1rem; }

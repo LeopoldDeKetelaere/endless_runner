@@ -18,6 +18,9 @@ export const CONFIG = {
   gameOverSeconden: 30,                 // na zoveel seconden gaat het game-over-scherm vanzelf naar het scorebord
   welkomTerugSeconden: 2,               // hoe lang 'WELKOM TERUG' blijft staan
 
+  // Adminpagina (/admin): automatisch uitloggen na zoveel minuten zonder activiteit
+  adminInactiviteitMinuten: 30,
+
   // Duiker
   duikerSnelheid: 260,      // verticale snelheid (pixels per seconde)
   duikerBreedte: 40,

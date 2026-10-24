@@ -11,16 +11,9 @@ import {
   initializeFirestore, getFirestore, persistentLocalCache, persistentMultipleTabManager,
 } from 'firebase/firestore';
 
-const instellingen = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
+import { instellingen, firebaseGeconfigureerd, emulatorUrl } from './firebaseConfig.js';
 
-// Zijn alle waarden ingevuld? Zo niet, dan start Firebase niet en toont het spel een melding.
-export const firebaseGeconfigureerd = Object.values(instellingen)
-  .every((waarde) => typeof waarde === 'string' && waarde.trim() !== '');
+export { firebaseGeconfigureerd };
 
 export const app = firebaseGeconfigureerd ? initializeApp(instellingen) : null;
 export const auth = app ? getAuth(app) : null;
@@ -41,7 +34,6 @@ function maakDatabase() {
 export const db = maakDatabase();
 
 // Alleen voor testen met de Firebase-emulator (zie .env.example)
-const emulatorUrl = import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_URL;
 if (auth && emulatorUrl) connectAuthEmulator(auth, emulatorUrl, { disableWarnings: true });
 
 // Wacht tot Firebase weet of er iemand ingelogd is (ook zonder internet: de login staat op dit toestel).

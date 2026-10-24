@@ -132,6 +132,14 @@ service cloud.firestore {
       allow delete: if admin();
     }
 
+    // ---- Alle daglijsten tegelijk lezen (alleen admin) ----
+    // De adminpagina leest met één opdracht alle regels uit alle daglijsten (een "collection group
+    // query" op 'entries'). Daarvoor is deze aparte regel nodig. Het stand-account krijgt hier niets
+    // mee: dat leest alleen de dag die het nodig heeft, via de regel hierboven.
+    match /{pad=**}/entries/{spelerId} {
+      allow read: if admin();
+    }
+
     // ---- Al het andere is verboden ----
     match /{document=**} {
       allow read, write: if false;
