@@ -18,6 +18,13 @@ export default class GameOverScene extends Phaser.Scene {
       fontSize: '20px', color: '#ffffff',
     }).setOrigin(0.5);
 
+    // Het opslaan van de score is mislukt: laat het personeel dat duidelijk zien
+    if (data.opgeslagen === false) {
+      this.add.text(midden, HOOGTE * 0.88, 'SCORE NIET OPGESLAGEN!', {
+        fontSize: '18px', color: '#ff6b6b',
+      }).setOrigin(0.5);
+    }
+
     // Korte pauze, zodat je niet per ongeluk meteen doorklikt. Daarna gaat spatie (of tik)
     // naar het startscherm met het scorebord.
     this.time.delayedCall(400, () => {

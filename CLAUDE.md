@@ -17,7 +17,8 @@ Gespeeld op een groot scherm op onze stand op een meerdaags B2B-event.
 - Persoonsgegevens en scores worden gescheiden opgeslagen.
 - E-mailadressen worden NOOIT op het scherm getoond.
 - Fase 2 (Firebase): verbinding en inloggen zijn klaar (Authentication met e-mail/wachtwoord voor het personeel). `scoreService` werkt nog op localStorage; Firestore en security rules komen nog.
-- Nog te bouwen: score opslaan na het spel (via `registry.get('spelerId')` en `submitScore`), rang tonen op het game-over-scherm, Firebase-koppeling. Het scorebord op het startscherm en de registratie bestaan al.
+- Na het laatste leven bewaart `GameScene.gameOver` de score via `submitScore` (speler-id uit `registry`); lukt dat niet, dan toont het game-over-scherm "SCORE NIET OPGESLAGEN!".
+- Nog te bouwen: rang tonen op het game-over-scherm (`getRank`), scoreService op Firestore met security rules.
 
 ## Mappenstructuur
 - `index.html`: pagina met het `#game`-element, laadt `src/main.js`.

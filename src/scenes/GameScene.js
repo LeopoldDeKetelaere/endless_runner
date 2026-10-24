@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BREEDTE, HOOGTE, CONFIG } from '../config.js';
 import { maakKolom, nieuweToestand } from '../hindernissen.js';
+import { submitScore } from '../scoreService.js';
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -265,9 +266,23 @@ export default class GameScene extends Phaser.Scene {
     this.decor.push({ obj, factor: 0.8 });
   }
 
-  gameOver() {
+  // Laatste leven kwijt: bewaar de score voor de speler die zich net registreerde
+  async gameOver() {
     if (this.isKlaar) return;
     this.isKlaar = true;
-    this.scene.start('GameOverScene', { score: Math.floor(this.afstand / CONFIG.pixelsPerMeter) });
+    const score = Math.floor(this.afstand / CONFIG.pixelsPerMeter);
+
+    let opgeslagen = null; // null = er was geen speler om de score aan te koppelen
+    const spelerId = this.registry.get('spelerId');
+    if (spelerId) {
+      try {
+        await submitScore(spelerId, score);
+        opgeslagen = true;
+      } catch (fout) {
+        console.error('Score opslaan mislukt', fout);
+        opgeslagen = false;
+      }
+    }
+    this.scene.start('GameOverScene', { score, opgeslagen });
   }
 }
