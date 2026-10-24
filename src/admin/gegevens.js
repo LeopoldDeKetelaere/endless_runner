@@ -149,3 +149,65 @@ export async function wisAlles(opties = {}) {
   const refs = [...players.docs, ...games.docs, ...allTime.docs, ...dagDocs].map((d) => d.ref);
   return verwijderRefs(refs, opties);
 }
+
+// ---------------------------------------------------------------------------
+// Deelnemers en spellen (voor Deelnemers, Winnaars, Statistieken en de exports)
+// ---------------------------------------------------------------------------
+
+const naarDatum = (tijdstip) => tijdstip?.toDate?.() ?? null;
+
+// Alle spelers uit 'players' (met persoonsgegevens: alleen het admin-account mag dit)
+export async function laadSpelers() {
+  const snap = await getDocs(collection(db, 'players'));
+  return snap.docs.map((document) => {
+    const x = document.data();
+    return {
+      id: document.id,
+      voornaam: x.voornaam ?? '',
+      achternaam: x.achternaam ?? '',
+      bedrijf: x.bedrijf ?? '',
+      email: x.email ?? '',
+      telefoon: x.telefoon ?? '',
+      toestemmingDeelname: x.toestemmingDeelname === true,
+      nieuwsbrief: x.nieuwsbrief === true,
+      toestemmingTijdstip: naarDatum(x.toestemmingTijdstip),
+      aangemaaktOp: naarDatum(x.aangemaaktOp),
+      test: x.test === true,
+    };
+  });
+}
+
+// Alle gespeelde spellen uit het logboek 'games'
+export async function laadSpellen() {
+  const snap = await getDocs(collection(db, 'games'));
+  return snap.docs.map((document) => {
+    const x = document.data();
+    return {
+      id: document.id,
+      spelerId: x.spelerId,
+      score: x.score,
+      dag: x.dag ?? null,
+      gespeeldOp: naarDatum(x.gespeeldOp),
+      test: x.test === true,
+    };
+  });
+}
+
+// GDPR: een speler VOLLEDIG verwijderen: de speler zelf, al zijn spellen en al zijn regels in alle
+// klassementen. De speler zelf staat als laatste in de lijst: mislukt het halverwege, dan bestaat
+// hij nog en kun je het opnieuw proberen. Geeft terug hoeveel spellen en daglijstregels weg zijn.
+export async function verwijderSpelerVolledig(spelerId, opties = {}) {
+  const [spellen, dagDocs] = await Promise.all([
+    getDocs(query(collection(db, 'games'), where('spelerId', '==', spelerId))),
+    alleDagDocumenten(),
+  ]);
+  const dagRefs = dagDocs.filter((d) => d.id === spelerId).map((d) => d.ref);
+  const refs = [
+    ...spellen.docs.map((d) => d.ref),
+    ...dagRefs,
+    doc(db, 'leaderboardAllTime', spelerId),
+    doc(db, 'players', spelerId),
+  ];
+  await verwijderRefs(refs, opties);
+  return { spellen: spellen.size, dagregels: dagRefs.length };
+}
