@@ -1,4 +1,4 @@
-import { BREEDTE, HOOGTE, CONFIG } from './config.js';
+import { BREEDTE, HOOGTE, CONFIG, px } from './config.js';
 
 // Maakt 'kolommen' hindernissen (rots, boot, octopussen en/of vissen) en
 // garandeert dat er in elke kolom een doorgang overblijft.
@@ -53,10 +53,21 @@ const maxRandHoogte = () => HOOGTE * CONFIG.maxRandHoogteFractie;
 // Afstand (pixels) tussen twee kolommen
 const kolomAfstand = () => (CONFIG.hindernisInterval / 1000) * CONFIG.startSnelheid;
 
+// Hoe breed is het gebied dat een hitbox (met verschuiving) horizontaal inneemt?
+// Zonder aanpassing van de hitbox is dat gewoon de breedte van het object.
+function hitboxBreedte(type, breedte) {
+  const h = CONFIG.hitbox[type];
+  return h.breedte * breedte + 2 * Math.abs(h.x * breedte);
+}
+
 // Hoeveel pixels de duiker verticaal kan verschuiven tussen twee kolommen
 function maxVerschuiving(snelheid) {
-  const breedsteHindernis = Math.max(CONFIG.rotsBreedte, CONFIG.bootBreedte, CONFIG.octopusBreedte);
-  const vrijeAfstand = kolomAfstand() - breedsteHindernis - CONFIG.duikerBreedte;
+  const breedsteHindernis = Math.max(
+    hitboxBreedte('rots', CONFIG.rotsBreedte),
+    hitboxBreedte('boot', CONFIG.bootBreedte),
+    hitboxBreedte('octopus', CONFIG.octopusBreedte),
+  );
+  const vrijeAfstand = kolomAfstand() - breedsteHindernis - hitboxBreedte('duiker', CONFIG.duikerBreedte);
   const tijd = Math.max(vrijeAfstand, 0) / snelheid;
   return CONFIG.duikerSnelheid * tijd * CONFIG.bereikFactor;
 }
@@ -74,14 +85,14 @@ function aantalKolommenVoorVis() {
 // of onder), maar nooit verder dan de duiker kan halen.
 function kiesDoorgang(toestand, snelheid) {
   const vorige = toestand.doorgangen[toestand.doorgangen.length - 1];
-  if (Math.abs(toestand.doel - vorige) < 5 || Math.random() < CONFIG.doorgangNieuwDoel) {
+  if (Math.abs(toestand.doel - vorige) < px(5) || Math.random() < CONFIG.doorgangNieuwDoel) {
     // Doel: willekeurig boven, midden of onder (met een beetje spreiding). Zo is de
     // doorgang ongeveer even vaak op elke hoogte en blijft het midden niet altijd vrij.
     const zone = randInt(0, DOORGANG_ZONES - 1);
     const minY = halveOpening();
     const maxY = HOOGTE - halveOpening();
     const midden = minY + (maxY - minY) * zone / (DOORGANG_ZONES - 1);
-    toestand.doel = klem(midden + rand(-20, 20), minY, maxY);
+    toestand.doel = klem(midden + rand(-px(20), px(20)), minY, maxY);
   }
   const verschuiving = maxVerschuiving(snelheid);
   return vorige + klem(toestand.doel - vorige, -verschuiving, verschuiving);
@@ -97,8 +108,24 @@ function eersteIsAanDeBeurt(verschil) {
 // Overlapt het gebied [boven, onder] met een ander gebied?
 const overlapt = (b1, o1, b2, o2) => b1 < o2 && o1 > b2;
 
-// Gebied (boven, onder) dat een item inneemt, inclusief dobberen
-const gebied = (i) => [i.y - i.amp - i.hoogte / 2, i.y + i.amp + i.hoogte / 2];
+// Het verticale bereik (boven, onder) van de hitbox van een item met middelpunt y en een hoogte
+function hitboxVerticaal(type, y, hoogte) {
+  const h = CONFIG.hitbox[type];
+  const midden = y + h.y * hoogte;
+  return [midden - (h.hoogte * hoogte) / 2, midden + (h.hoogte * hoogte) / 2];
+}
+
+// Gebied (boven, onder) dat een item inneemt (de hitbox), inclusief dobberen
+function gebied(item) {
+  const [boven, onder] = hitboxVerticaal(item.type, item.y, item.hoogte);
+  return [boven - item.amp, onder + item.amp];
+}
+
+// Een rots staat tegen de onderkant: de bovenkant van zijn hitbox ligt op HOOGTE - hoogte * factor.
+// Een boot hangt aan de bovenkant: de onderkant van zijn hitbox ligt op hoogte * factor.
+// Zonder aanpassing van de hitbox is de factor 1 (de hitbox is het hele object).
+const rotsFactor = () => 0.5 - CONFIG.hitbox.rots.y + CONFIG.hitbox.rots.hoogte / 2;
+const bootFactor = () => 0.5 + CONFIG.hitbox.boot.y + CONFIG.hitbox.boot.hoogte / 2;
 
 // Zet een dier neer dat 'verboden' gebieden vermijdt. We proberen eerst de baan van het
 // scherm waar van deze soort tot nu toe het minste zaten, en zo verder. Zo komen de dieren
@@ -143,7 +170,7 @@ export function maakKolom(toestand, snelheid) {
     if (Math.random() < CONFIG.kansRotsOfBoot) {
       if (eersteIsAanDeBeurt(rotsMinBoot)) {
         // Rots: vanaf de bodem, mag de doorgang niet raken
-        const maxHoogte = Math.min(maxRandHoogte(), HOOGTE - doorgangOnder);
+        const maxHoogte = Math.min(maxRandHoogte(), rotsFactor() > 0 ? (HOOGTE - doorgangOnder) / rotsFactor() : Infinity);
         if (maxHoogte >= CONFIG.rotsMinHoogte) {
           const hoogte = rand(CONFIG.rotsMinHoogte, maxHoogte);
           items.push({ type: 'rots', breedte: CONFIG.rotsBreedte, hoogte, y: HOOGTE - hoogte / 2, amp: 0, kleur: CONFIG.rotsKleur });
@@ -151,7 +178,7 @@ export function maakKolom(toestand, snelheid) {
         }
       } else {
         // Boot: vanaf de bovenkant
-        const maxHoogte = Math.min(maxRandHoogte(), doorgangBoven);
+        const maxHoogte = Math.min(maxRandHoogte(), bootFactor() > 0 ? doorgangBoven / bootFactor() : Infinity);
         if (maxHoogte >= CONFIG.bootMinHoogte) {
           const hoogte = rand(CONFIG.bootMinHoogte, maxHoogte);
           items.push({ type: 'boot', breedte: CONFIG.bootBreedte, hoogte, y: hoogte / 2, amp: 0, kleur: CONFIG.bootKleur });

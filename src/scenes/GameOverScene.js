@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { BREEDTE, HOOGTE, CONFIG } from '../config.js';
+import { BREEDTE, HOOGTE, CONFIG, px } from '../config.js';
 
 export default class GameOverScene extends Phaser.Scene {
   constructor() {
@@ -9,19 +9,19 @@ export default class GameOverScene extends Phaser.Scene {
   create(data) {
     const midden = BREEDTE / 2;
     this.add.text(midden, HOOGTE * 0.28, 'Helaas, verloren', {
-      fontSize: '56px', color: '#ffffff',
+      fontSize: px(56) + 'px', color: '#ffffff',
     }).setOrigin(0.5);
     this.add.text(midden, HOOGTE * 0.48, 'Score: ' + (data.score ?? 0), {
-      fontSize: '32px', color: '#ffe030',
+      fontSize: px(32) + 'px', color: '#ffe030',
     }).setOrigin(0.5);
     this.add.text(midden, HOOGTE * 0.7, 'Druk op spatie of tik om naar het scorebord te gaan', {
-      fontSize: '20px', color: '#ffffff',
+      fontSize: px(20) + 'px', color: '#ffffff',
     }).setOrigin(0.5);
 
     // Het opslaan van de score is mislukt: laat het personeel dat duidelijk zien
     if (data.opgeslagen === false) {
       this.add.text(midden, HOOGTE * 0.88, 'SCORE NIET OPGESLAGEN!', {
-        fontSize: '18px', color: '#ff6b6b',
+        fontSize: px(18) + 'px', color: '#ff6b6b',
       }).setOrigin(0.5);
     }
 

@@ -1,4 +1,4 @@
-import { BREEDTE } from './config.js';
+import { OVERLAY_BREEDTE } from './config.js';
 
 // Maakt een HTML-laag die precies over het spelcanvas ligt (800x450 spelpixels, mee geschaald).
 // Wordt gebruikt voor het inlogformulier en de uitlog-bevestiging.
@@ -12,7 +12,7 @@ export function maakLaag(game, extraKlasse = '') {
     const r = game.canvas.getBoundingClientRect();
     laag.style.left = r.left + 'px';
     laag.style.top = r.top + 'px';
-    laag.style.transform = `scale(${r.width / BREEDTE})`;
+    laag.style.transform = `scale(${r.width / OVERLAY_BREEDTE})`; // het formulier is ontworpen op 800 breed
   };
   window.addEventListener('resize', pas);
   game.scale.on('resize', pas);

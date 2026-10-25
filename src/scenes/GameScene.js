@@ -1,7 +1,23 @@
 import Phaser from 'phaser';
-import { BREEDTE, HOOGTE, CONFIG } from '../config.js';
+import { BREEDTE, HOOGTE, CONFIG, px } from '../config.js';
 import { maakKolom, nieuweToestand } from '../hindernissen.js';
 import { submitScore } from '../scoreService.js';
+
+// Kleuren van de hitbox-kaders in de debugweergave (toets H)
+const DEBUG_KLEUREN = { duiker: 0x00ff00, rots: 0xff00ff, boot: 0x00ffff, octopus: 0xffffff, vis: 0xff0000 };
+
+// Geef een object (met al een physics body) zijn eigen hitbox, los van zijn uiterlijk.
+// hb komt uit CONFIG.hitbox: breedte en hoogte als fractie van het object, x en y als verschuiving
+// van het midden van de hitbox (ook als fractie van het object).
+function zetHitbox(object, hb) {
+  const b = object.displayWidth;
+  const h = object.displayHeight;
+  const hitBreedte = hb.breedte * b;
+  const hitHoogte = hb.hoogte * h;
+  object.body.setSize(hitBreedte, hitHoogte, false);
+  // De offset is de afstand van de linkerbovenhoek van het object tot die van de hitbox
+  object.body.setOffset(b / 2 + hb.x * b - hitBreedte / 2, h / 2 + hb.y * h - hitHoogte / 2);
+}
 
 export default class GameScene extends Phaser.Scene {
   constructor() {
@@ -33,6 +49,7 @@ export default class GameScene extends Phaser.Scene {
       CONFIG.duikerBreedte, CONFIG.duikerHoogte, CONFIG.kleurDuiker
     );
     this.physics.add.existing(this.duiker);
+    zetHitbox(this.duiker, CONFIG.hitbox.duiker);
     this.duiker.body.setCollideWorldBounds(true); // niet buiten beeld
 
     // Hindernissen (rotsen, boten, octopussen en vissen)
@@ -44,27 +61,27 @@ export default class GameScene extends Phaser.Scene {
     this.input.addPointer(1); // meerdere vingers toelaten
 
     // Score linksboven
-    this.scoreTekst = this.add.text(12, 10, 'Score: 0', {
-      fontSize: '22px', color: '#ffffff',
+    this.scoreTekst = this.add.text(px(12), px(10), 'Score: 0', {
+      fontSize: px(22) + 'px', color: '#ffffff',
     }).setDepth(10);
 
     // Levens rechtsboven (een symbooltje per leven, verloren levens worden vaag)
     this.levensSymbolen = [];
     for (let i = 0; i < CONFIG.levens; i++) {
-      const symbool = this.add.text(BREEDTE - 12 - i * 30, 8, '♥', {
-        fontFamily: 'Arial, sans-serif', fontSize: '28px', color: '#ff4060',
+      const symbool = this.add.text(BREEDTE - px(12) - i * px(30), px(8), '♥', {
+        fontFamily: 'Arial, sans-serif', fontSize: px(28) + 'px', color: '#ff4060',
       }).setOrigin(1, 0).setDepth(10);
       this.levensSymbolen.push(symbool);
     }
 
     // Grote countdown in het midden (staat verborgen tot er een leven verloren is)
     this.countdownTekst = this.add.text(BREEDTE / 2, HOOGTE / 2, '', {
-      fontSize: '140px', color: '#ffffff', fontStyle: 'bold',
+      fontSize: px(140) + 'px', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(20).setVisible(false);
 
     // Tekst die getoond wordt als je een leven kwijt bent en eerst moet bevestigen
     this.wachtTekst = this.add.text(BREEDTE / 2, HOOGTE / 2, 'Druk op spatie of tik om verder te spelen', {
-      fontSize: '28px', color: '#ffffff', stroke: '#0b1e4a', strokeThickness: 6,
+      fontSize: px(28) + 'px', color: '#ffffff', stroke: '#0b1e4a', strokeThickness: px(6),
     }).setOrigin(0.5).setDepth(20).setVisible(false);
 
     // Spatie of tik: na een verloren leven de countdown starten
@@ -73,12 +90,39 @@ export default class GameScene extends Phaser.Scene {
 
     this.isKlaar = false;
 
+    // Debug: met toets H de hitboxen tonen (alleen als CONFIG.debugHitboxes aan staat)
+    this.debugAan = false;
+    if (CONFIG.debugHitboxes) {
+      this.debugLaag = this.add.graphics().setDepth(50);
+      this.debugTekst = this.add.text(BREEDTE / 2, HOOGTE - px(10), 'HITBOXEN (H)', {
+        fontSize: px(10) + 'px', color: '#00ff00',
+      }).setOrigin(0.5, 1).setDepth(50).setVisible(false);
+      this.input.keyboard.on('keydown-H', () => {
+        this.debugAan = !this.debugAan;
+        this.debugTekst.setVisible(this.debugAan);
+        if (!this.debugAan) this.debugLaag.clear();
+      });
+    }
+
     // Het spel begint met een countdown 3 - 2 - 1, zodat de speler zich kan voorbereiden
     this.startCountdown();
   }
 
+  // Teken een gekleurd kader om elke hitbox (zoals Phaser hem echt gebruikt voor botsingen)
+  tekenHitboxen() {
+    const g = this.debugLaag;
+    g.clear();
+    const kader = (body, kleur) => {
+      g.lineStyle(px(1.5), kleur, 1);
+      g.strokeRect(body.x, body.y, body.width, body.height);
+    };
+    kader(this.duiker.body, DEBUG_KLEUREN.duiker);
+    for (const h of this.hindernissen.getChildren()) kader(h.body, DEBUG_KLEUREN[h.hindernisType]);
+  }
+
   update(tijd, delta) {
     if (this.isKlaar) return;
+    if (this.debugAan) this.tekenHitboxen();
 
     // Tijdens het wachten en de countdown staat alles stil (ook de score)
     if (this.fase === 'wachten') return;
@@ -202,7 +246,7 @@ export default class GameScene extends Phaser.Scene {
       d.obj.x -= this.snelheid * d.factor * dt;
       if (d.obj.x + d.obj.width / 2 < 0) {
         d.obj.x = BREEDTE + d.obj.width / 2;
-        d.obj.y = Phaser.Math.Between(10, HOOGTE - 10);
+        d.obj.y = Phaser.Math.Between(px(10), HOOGTE - px(10));
       }
     }
   }
@@ -248,24 +292,26 @@ export default class GameScene extends Phaser.Scene {
       h.periode = item.periode;
       h.fase = fase;
       h.leeftijd = 0;
+      h.hindernisType = item.type; // 'rots', 'boot', 'octopus' of 'vis'
       this.physics.add.existing(h);
       h.body.setAllowGravity(false);
+      zetHitbox(h, CONFIG.hitbox[item.type]);
       this.hindernissen.add(h);
     }
   }
 
   maakStreep(x) {
     const obj = this.add.rectangle(
-      x, Phaser.Math.Between(10, HOOGTE - 10),
-      Phaser.Math.Between(60, 140), 3, CONFIG.kleurDecor, 0.6
+      x, Phaser.Math.Between(px(10), HOOGTE - px(10)),
+      Phaser.Math.Between(px(60), px(140)), px(3), CONFIG.kleurDecor, 0.6
     );
     this.decor.push({ obj, factor: 0.5 });
   }
 
   maakBubbel(x) {
     const obj = this.add.circle(
-      x, Phaser.Math.Between(10, HOOGTE - 10),
-      Phaser.Math.Between(2, 5), CONFIG.kleurDecor, 0.8
+      x, Phaser.Math.Between(px(10), HOOGTE - px(10)),
+      Phaser.Math.Between(px(2), px(5)), CONFIG.kleurDecor, 0.8
     );
     obj.width = obj.height = obj.radius * 2;
     this.decor.push({ obj, factor: 0.8 });

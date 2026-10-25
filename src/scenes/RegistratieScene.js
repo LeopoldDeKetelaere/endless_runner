@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import '../registratie.css';
-import { BREEDTE, CONFIG } from '../config.js';
+import { OVERLAY_BREEDTE, CONFIG } from '../config.js';
 import { registerPlayer, findPlayerByEmail, updateNewsletterConsent } from '../scoreService.js';
 import { controleerTekst, controleerEmail, controleerTelefoon } from '../validatie.js';
 
@@ -177,7 +177,7 @@ export default class RegistratieScene extends Phaser.Scene {
     const r = this.game.canvas.getBoundingClientRect();
     this.wrap.style.left = r.left + 'px';
     this.wrap.style.top = r.top + 'px';
-    this.wrap.style.transform = `scale(${r.width / BREEDTE})`;
+    this.wrap.style.transform = `scale(${r.width / OVERLAY_BREEDTE})`; // het formulier is ontworpen op 800 breed
   }
 
   toonScherm(naam) {

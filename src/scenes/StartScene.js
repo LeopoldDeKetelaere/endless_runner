@@ -1,11 +1,11 @@
 import Phaser from 'phaser';
-import { BREEDTE, HOOGTE, CONFIG } from '../config.js';
+import { BREEDTE, HOOGTE, CONFIG, px } from '../config.js';
 import { getTopScoresToday, getTopScoresAllTime, volgSchrijfFouten } from '../scoreService.js';
 import { voegTestspelersToe } from '../testdata.js';
 import { volgVerbinding } from '../firebase.js';
 
 const LETTERTYPE = '"Press Start 2P", monospace';
-const MARGE = 16;
+const MARGE = px(16);
 const PLAATS_TEKENS = 4; // "10. " of " 1. "
 
 // Kort een tekst in met "…" als hij langer is dan 'max' tekens
@@ -42,8 +42,8 @@ export default class StartScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(CONFIG.kleurAchtergrond);
 
     // Titel
-    this.add.text(BREEDTE / 2, 36, CONFIG.spelTitel, {
-      fontFamily: LETTERTYPE, fontSize: '40px', color: '#ffe030', stroke: '#000000', strokeThickness: 8,
+    this.add.text(BREEDTE / 2, px(36), CONFIG.spelTitel, {
+      fontFamily: LETTERTYPE, fontSize: px(40) + 'px', color: '#ffe030', stroke: '#000000', strokeThickness: px(8),
     }).setOrigin(0.5);
 
     // Twee kolommen met de top 10
@@ -58,10 +58,10 @@ export default class StartScene extends Phaser.Scene {
       { titel: 'TOP 10 VANDAAG', x: MARGE },
       { titel: 'TOP 10 ALLER TIJDEN', x: MARGE * 2 + kolomBreedte },
     ].map(({ titel, x }) => {
-      this.add.text(x, 92, titel, { fontFamily: LETTERTYPE, fontSize: '16px', color: '#7fd4ff' });
+      this.add.text(x, px(92), titel, { fontFamily: LETTERTYPE, fontSize: px(16) + 'px', color: '#7fd4ff' });
       const regels = [];
       for (let i = 0; i < CONFIG.topAantal; i++) {
-        regels.push(this.add.text(x, 124 + i * (fontPx + 14), '', {
+        regels.push(this.add.text(x, px(124) + i * (fontPx + px(14)), '', {
           fontFamily: LETTERTYPE, fontSize: fontPx + 'px', color: '#ffffff',
         }));
       }
@@ -71,7 +71,7 @@ export default class StartScene extends Phaser.Scene {
 
     // Klein bolletje rechtsboven: groen = verbinding met Firebase actief, rood = geen verbinding
     // (grijs = nog onbekend). Zo zie je op de stand meteen of de wifi wegvalt.
-    const bolletje = this.add.circle(BREEDTE - 10, 10, 4, 0x555555);
+    const bolletje = this.add.circle(BREEDTE - px(10), px(10), px(4), 0x555555);
     const stopVolgen = volgVerbinding((verbonden) => {
       if (this.afgesloten) return;
       bolletje.setFillStyle(verbonden === true ? 0x3fdc5a : verbonden === false ? 0xff4040 : 0x555555);
@@ -80,8 +80,8 @@ export default class StartScene extends Phaser.Scene {
 
     // Klein rood bericht rechtsonder als het doorsturen van scores naar de server is mislukt
     // (bijvoorbeeld door de security rules). Zo blijft zo'n fout niet onopgemerkt.
-    const opslagFout = this.add.text(BREEDTE - MARGE, HOOGTE - 12, '', {
-      fontFamily: LETTERTYPE, fontSize: '8px', color: '#ff6b6b',
+    const opslagFout = this.add.text(BREEDTE - MARGE, HOOGTE - px(12), '', {
+      fontFamily: LETTERTYPE, fontSize: px(8) + 'px', color: '#ff6b6b',
     }).setOrigin(1, 1);
     const stopFouten = volgSchrijfFouten((aantal) => {
       if (this.afgesloten) return;
@@ -90,8 +90,8 @@ export default class StartScene extends Phaser.Scene {
     this.events.once('shutdown', stopFouten);
 
     // Knipperende tekst
-    const start = this.add.text(BREEDTE / 2, HOOGTE - 34, 'DRUK OP SPATIE', {
-      fontFamily: LETTERTYPE, fontSize: '24px', color: '#ffffff', stroke: '#000000', strokeThickness: 6,
+    const start = this.add.text(BREEDTE / 2, HOOGTE - px(34), 'DRUK OP SPATIE', {
+      fontFamily: LETTERTYPE, fontSize: px(24) + 'px', color: '#ffffff', stroke: '#000000', strokeThickness: px(6),
     }).setOrigin(0.5);
     this.time.addEvent({ delay: 500, loop: true, callback: () => start.setVisible(!start.visible) });
 
@@ -101,8 +101,8 @@ export default class StartScene extends Phaser.Scene {
 
     // Testfunctie: toets T voegt nepspelers toe
     if (CONFIG.testfunctieAan) {
-      this.meldingTekst = this.add.text(MARGE, HOOGTE - 12, 'TESTMODUS: TOETS T = 15 NEPSPELERS', {
-        fontFamily: LETTERTYPE, fontSize: '8px', color: '#7fd4ff',
+      this.meldingTekst = this.add.text(MARGE, HOOGTE - px(12), 'TESTMODUS: TOETS T = 15 NEPSPELERS', {
+        fontFamily: LETTERTYPE, fontSize: px(8) + 'px', color: '#7fd4ff',
       }).setOrigin(0, 1).setAlpha(0.8);
       this.input.keyboard.on('keydown-T', async () => {
         await voegTestspelersToe();

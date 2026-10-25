@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import '@fontsource/press-start-2p/400.css'; // retro lettertype, zit in het project (werkt ook zonder internet)
 import { BREEDTE, HOOGTE, CONFIG } from './config.js';
+import PreloadScene from './scenes/PreloadScene.js';
 import LoginScene from './scenes/LoginScene.js';
 import StartScene from './scenes/StartScene.js';
 import RegistratieScene from './scenes/RegistratieScene.js';
@@ -22,14 +23,16 @@ lettertypeKlaar.then(() => {
     height: HOOGTE,
     parent: 'game',
     backgroundColor: CONFIG.kleurAchtergrond,
-    pixelArt: true, // scherpe pixels als het spel op een groot scherm wordt opgeschaald
+    // Geen pixel art: de illustraties moeten vloeiend en scherp geschaald worden
+    pixelArt: false,
+    roundPixels: false,
     physics: { default: 'arcade' },
     // Schaal mee met het scherm en centreer
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    scene: [LoginScene, StartScene, RegistratieScene, GameScene, GameOverScene],
+    scene: [PreloadScene, LoginScene, StartScene, RegistratieScene, GameScene, GameOverScene],
   });
   installeerUitloggen(spel); // verborgen sneltoets Ctrl+Shift+L
 });
