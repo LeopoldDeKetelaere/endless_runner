@@ -3,6 +3,18 @@ import { BREEDTE, HOOGTE, CONFIG, px } from '../config.js';
 import { AFBEELDINGEN, GELUIDEN } from '../assets.js';
 
 const LETTERTYPE = '"Press Start 2P", monospace';
+const MAX_ANIMATIEBEELDJES = 99;
+
+// Bestaat deze afbeelding? We proberen hem echt te laden: dat werkt ook als de server bij een
+// ontbrekend bestand een webpagina terugstuurt in plaats van een foutmelding.
+function afbeeldingBestaat(url) {
+  return new Promise((klaar) => {
+    const beeld = new Image();
+    beeld.onload = () => klaar(true);
+    beeld.onerror = () => klaar(false);
+    beeld.src = url;
+  });
+}
 
 // Laadt alle afbeeldingen en geluiden (zie assets.js) met een laadbalk in de stijl van het spel,
 // en gaat daarna naar het inlogscherm.
@@ -43,7 +55,7 @@ export default class PreloadScene extends Phaser.Scene {
     for (const geluid of GELUIDEN) this.load.audio(geluid.sleutel, geluid.bestanden);
   }
 
-  create() {
+  async create() {
     // Staat een bestand in assets.js maar niet in de map (of is het kapot)? Dan melden we dat één keer.
     const ontbreekt = [
       ...AFBEELDINGEN.filter((a) => !this.textures.exists(a.sleutel)).map((a) => a.sleutel),
@@ -52,6 +64,39 @@ export default class PreloadScene extends Phaser.Scene {
     if (ontbreekt.length > 0) {
       console.warn(`${ontbreekt.length} bestand(en) niet geladen: ${ontbreekt.join(', ')}. Controleer assets.js en de mappen in public/assets.`);
     }
+    // Genummerde animatiebeeldjes van de duiker (duiker_01.png, duiker_02.png, ...): als ze bestaan,
+    // spelen ze later af in plaats van de stilstaande afbeelding.
+    await this.zoekAnimatie('duiker', 'duikerFrames', 'duiker-zwem');
+    await this.zoekAnimatie('duiker_groot', 'duikerGrootFrames', 'duiker-groot-zwem');
+
     this.scene.start('LoginScene');
+  }
+
+  // Zoek bestanden voorvoegsel_01.png, voorvoegsel_02.png, ... (tot het eerste nummer dat ontbreekt),
+  // laad ze en maak er een animatie van. Het aantal gevonden beeldjes komt in this.registry
+  // (0 = geen animatie). De animatie heet 'animatieNaam'.
+  async zoekAnimatie(voorvoegsel, registerSleutel, animatieNaam) {
+    const map = import.meta.env.BASE_URL + 'assets/images/';
+    const nummer = (n) => String(n).padStart(2, '0');
+
+    let aantal = 0;
+    while (aantal < MAX_ANIMATIEBEELDJES && await afbeeldingBestaat(`${map}${voorvoegsel}_${nummer(aantal + 1)}.png`)) aantal++;
+    this.registry.set(registerSleutel, aantal);
+    if (aantal === 0) return;
+
+    // Laad de beeldjes en maak de animatie
+    await new Promise((klaar) => {
+      this.load.setPath(map);
+      for (let n = 1; n <= aantal; n++) this.load.image(`${voorvoegsel}_${nummer(n)}`, `${voorvoegsel}_${nummer(n)}.png`);
+      this.load.once('complete', klaar);
+      this.load.start();
+    });
+    this.anims.create({
+      key: animatieNaam,
+      frames: Array.from({ length: aantal }, (_, i) => ({ key: `${voorvoegsel}_${nummer(i + 1)}` })),
+      frameRate: CONFIG.duikerAnimatieFps,
+      repeat: -1,
+    });
+    console.info(`Zwemanimatie '${voorvoegsel}': ${aantal} beeldjes gevonden.`);
   }
 }

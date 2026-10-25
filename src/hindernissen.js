@@ -55,9 +55,11 @@ const kolomAfstand = () => (CONFIG.hindernisInterval / 1000) * CONFIG.startSnelh
 
 // Hoe breed is het gebied dat een hitbox (met verschuiving) horizontaal inneemt?
 // Zonder aanpassing van de hitbox is dat gewoon de breedte van het object.
-function hitboxBreedte(type, breedte) {
+// Voor hindernissen tellen we ook de verschuiving mee (veilig bovengrens voor een hele kolom).
+// Voor de duiker niet: een verschoven hitbox komt alleen eerder of later, niet langer, langs een hindernis.
+function hitboxBreedte(type, breedte, metVerschuiving = true) {
   const h = CONFIG.hitbox[type];
-  return h.breedte * breedte + 2 * Math.abs(h.x * breedte);
+  return h.breedte * breedte + (metVerschuiving ? 2 * Math.abs(h.x * breedte) : 0);
 }
 
 // Hoeveel pixels de duiker verticaal kan verschuiven tussen twee kolommen
@@ -67,7 +69,7 @@ function maxVerschuiving(snelheid) {
     hitboxBreedte('boot', CONFIG.bootBreedte),
     hitboxBreedte('octopus', CONFIG.octopusBreedte),
   );
-  const vrijeAfstand = kolomAfstand() - breedsteHindernis - hitboxBreedte('duiker', CONFIG.duikerBreedte);
+  const vrijeAfstand = kolomAfstand() - breedsteHindernis - hitboxBreedte('duiker', CONFIG.duikerBreedte, false);
   const tijd = Math.max(vrijeAfstand, 0) / snelheid;
   return CONFIG.duikerSnelheid * tijd * CONFIG.bereikFactor;
 }

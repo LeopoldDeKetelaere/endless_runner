@@ -46,6 +46,8 @@ export default class StartScene extends Phaser.Scene {
       fontFamily: LETTERTYPE, fontSize: px(40) + 'px', color: '#ffe030', stroke: '#000000', strokeThickness: px(8),
     }).setOrigin(0.5);
 
+    this.maakStartDuiker();
+
     // Twee kolommen met de top 10
     const fontPx = CONFIG.scorebordLettergrootte;
     const kolomBreedte = (BREEDTE - 3 * MARGE) / 2;
@@ -58,10 +60,10 @@ export default class StartScene extends Phaser.Scene {
       { titel: 'TOP 10 VANDAAG', x: MARGE },
       { titel: 'TOP 10 ALLER TIJDEN', x: MARGE * 2 + kolomBreedte },
     ].map(({ titel, x }) => {
-      this.add.text(x, px(92), titel, { fontFamily: LETTERTYPE, fontSize: px(16) + 'px', color: '#7fd4ff' });
+      this.add.text(x, px(152), titel, { fontFamily: LETTERTYPE, fontSize: px(16) + 'px', color: '#7fd4ff' });
       const regels = [];
       for (let i = 0; i < CONFIG.topAantal; i++) {
-        regels.push(this.add.text(x, px(124) + i * (fontPx + px(14)), '', {
+        regels.push(this.add.text(x, px(176) + i * (fontPx + px(14)), '', {
           fontFamily: LETTERTYPE, fontSize: fontPx + 'px', color: '#ffffff',
         }));
       }
@@ -111,6 +113,41 @@ export default class StartScene extends Phaser.Scene {
         this.vulBorden();
       });
     }
+  }
+
+  // De grote duiker die langzaam heen en weer zwemt, tussen de titel en het scorebord.
+  // Voorkeur: een grote zwemanimatie, dan de gewone zwemanimatie, anders de grote stilstaande afbeelding.
+  maakStartDuiker() {
+    let sleutel = null;
+    let animatie = null;
+    if ((this.registry.get('duikerGrootFrames') ?? 0) > 0) { sleutel = 'duiker_groot_01'; animatie = 'duiker-groot-zwem'; }
+    else if ((this.registry.get('duikerFrames') ?? 0) > 0) { sleutel = 'duiker_01'; animatie = 'duiker-zwem'; }
+    else if (this.textures.exists('duiker_groot')) sleutel = 'duiker_groot';
+    if (!sleutel) return; // geen afbeelding: gewoon geen duiker
+
+    const beeld = this.add.sprite(0, 0, sleutel).setDepth(1);
+    beeld.setScale(CONFIG.startDuikerBreedte / beeld.width);
+    if (animatie) beeld.play(animatie);
+    const marge = beeld.displayWidth / 2 + px(20);
+    beeld.x = marge;
+    this.startDuiker = { beeld, richting: 1, marge };
+  }
+
+  update(tijd, delta) {
+    const duiker = this.startDuiker;
+    if (!duiker) return;
+    const dt = Math.min(delta, 100) / 1000;
+    const golf = (tijd / CONFIG.duikerDeinPeriode) * Math.PI * 2;
+
+    // Heen en weer zwemmen; aan het einde draait hij om
+    duiker.beeld.x += duiker.richting * CONFIG.startDuikerSnelheid * dt;
+    if (duiker.beeld.x > BREEDTE - duiker.marge) duiker.richting = -1;
+    else if (duiker.beeld.x < duiker.marge) duiker.richting = 1;
+    duiker.beeld.setFlipX(duiker.richting < 0);
+
+    // Rustig op en neer en een heel klein beetje kantelen
+    duiker.beeld.y = px(105) + Math.sin(golf) * px(6);
+    duiker.beeld.setAngle(Math.sin(golf + 1.2) * 2.5);
   }
 
   // Haal de toppen op en toon ze

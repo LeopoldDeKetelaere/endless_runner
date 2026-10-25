@@ -8,12 +8,20 @@
 // (bv. this.add.image(x, y, 'duiker')). Staat een bestand in de lijst maar niet in de map, dan meldt het spel
 // dat in de console en gaat het gewoon verder.
 //
+// Zwemanimatie van de duiker: zet genummerde beeldjes in public/assets/images, zonder gaten in de nummering:
+//   duiker_01.png, duiker_02.png, duiker_03.png, ...        (in het spel; zelfde formaat als duiker.png)
+//   duiker_groot_01.png, duiker_groot_02.png, ...           (optioneel: voor het startscherm)
+// Die hoef je hier NIET in te vullen: het spel zoekt ze zelf. Zijn ze er, dan speelt de animatie af in
+// plaats van de stilstaande afbeelding. Het tempo staat in config.js (duikerAnimatieFps).
+//
 // Voorbeelden:
 //   { sleutel: 'duiker', bestand: 'duiker.png' }
 //   { sleutel: 'botsing', bestanden: ['botsing.ogg', 'botsing.mp3'] }   // meerdere formaten: de browser kiest
 
 export const AFBEELDINGEN = [
-  // { sleutel: 'duiker', bestand: 'duiker.png' },
+  { sleutel: 'duiker', bestand: 'duiker.png' },              // de duiker in het spel
+  { sleutel: 'duiker_groot', bestand: 'duiker_groot.png' },  // de grote duiker op het startscherm
+  // Beide worden gemaakt met:  npm run duiker  (uit assets-bron/duiker.png)
 ];
 
 export const GELUIDEN = [

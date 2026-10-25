@@ -41,9 +41,27 @@ export const CONFIG = {
 
   // Duiker
   duikerSnelheid: 624,      // verticale snelheid (pixels per seconde)
-  duikerBreedte: 96,
-  duikerHoogte: 48,
+  duikerBreedte: 230,       // breedte van de duiker op het scherm (pixels); de hoogte volgt uit de afbeelding
   duikerPositieX: 0.2,      // 0.2 = 20% van links
+  kleurDuiker: 0xffe030,    // blokje dat getoond wordt als de afbeelding ontbreekt
+
+  // Duiker: levendig, zonder extra beeldjes
+  duikerDeinHoogte: 9,         // hoeveel pixels hij rustig op en neer deint
+  duikerDeinPeriode: 2600,     // ms voor één keer op en neer
+  duikerKantelHoek: 8,         // hoeveel graden hij kantelt als hij omhoog of omlaag stuurt
+  duikerKantelSnelheid: 9,     // hoe snel hij kantelt en terugdraait (hoger = sneller)
+  duikerBubbelInterval: [2500, 5500],  // ms tussen twee bubbelstoten (willekeurig tussen deze twee)
+  duikerBubbelsPerStoot: [2, 4],       // aantal bubbels per stoot (willekeurig tussen deze twee)
+  duikerBubbelPunt: { x: 0.77, y: 0.04 },  // waar de bubbels uit de helm komen (fractie van de afbeelding)
+  duikerBubbelRadius: [6, 14], // grootte van een bubbel in pixels (straal, willekeurig tussen deze twee)
+
+  // Zwemanimatie: staan er bestanden duiker_01.png, duiker_02.png, ... in public/assets/images,
+  // dan speelt die animatie af in plaats van de stilstaande afbeelding (zie assets.js).
+  duikerAnimatieFps: 10,       // beeldjes per seconde
+
+  // Grote duiker op het startscherm: zwemt langzaam heen en weer boven het scorebord
+  startDuikerBreedte: 420,     // pixels
+  startDuikerSnelheid: 140,    // pixels per seconde
 
   // Levens
   levens: 3,                // aantal levens bij de start
@@ -115,7 +133,9 @@ export const CONFIG = {
   // Tip: houd de hitbox niet groter dan de afbeelding. Het spel houdt altijd rekening met de
   // hitbox bij het vrijhouden van een doorgang, maar een kleinere hitbox voelt eerlijker.
   hitbox: {
-    duiker: { breedte: 1, hoogte: 1, x: 0, y: 0 },
+    // De duiker: alleen de romp en de helm tellen. De uitgestrekte arm met het glas, de vrije hand en
+    // de voeten tellen niet mee. (Bekijk het met toets H en debugHitboxes: true.)
+    duiker: { breedte: 0.38, hoogte: 0.69, x: 0.19, y: -0.12 },
     rots: { breedte: 1, hoogte: 1, x: 0, y: 0 },
     boot: { breedte: 1, hoogte: 1, x: 0, y: 0 },
     octopus: { breedte: 1, hoogte: 1, x: 0, y: 0 },
@@ -128,5 +148,4 @@ export const CONFIG = {
   // Kleuren
   kleurAchtergrond: 0x0b1e4a,
   kleurDecor: 0x2a4a8c,
-  kleurDuiker: 0xffe030,
 };

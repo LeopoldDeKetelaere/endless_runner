@@ -43,14 +43,12 @@ export default class GameScene extends Phaser.Scene {
       this.maakBubbel(Phaser.Math.Between(0, BREEDTE));
     }
 
-    // Duiker (geel rechthoekje)
-    this.duiker = this.add.rectangle(
-      BREEDTE * CONFIG.duikerPositieX, HOOGTE / 2,
-      CONFIG.duikerBreedte, CONFIG.duikerHoogte, CONFIG.kleurDuiker
-    );
-    this.physics.add.existing(this.duiker);
-    zetHitbox(this.duiker, CONFIG.hitbox.duiker);
-    this.duiker.body.setCollideWorldBounds(true); // niet buiten beeld
+    // Duiker: een onzichtbaar object met de hitbox, en daarover de afbeelding (zie maakDuiker)
+    this.stuurRichting = 0;  // -1 = omhoog sturen, 1 = omlaag, 0 = niet
+    this.kantel = 0;         // huidige kantelhoek van het beeld (graden)
+    this.bubbels = [];
+    this.bubbelTimer = Phaser.Math.Between(1200, 2500);
+    this.maakDuiker();
 
     // Hindernissen (rotsen, boten, octopussen en vissen)
     this.hindernissen = this.add.group();
@@ -108,6 +106,105 @@ export default class GameScene extends Phaser.Scene {
     this.startCountdown();
   }
 
+  // De duiker bestaat uit twee delen:
+  // - 'this.duiker': een onzichtbaar object met de hitbox. Dat wordt bestuurd en botst.
+  // - 'this.duikerBeeld': de afbeelding erover. Die deint, kantelt en maakt bubbels, zonder de hitbox te verplaatsen.
+  // Ontbreekt de afbeelding, dan tonen we het gele blokje.
+  maakDuiker() {
+    const x = BREEDTE * CONFIG.duikerPositieX;
+    const y = HOOGTE / 2;
+    // Bestaat er een zwemanimatie (zie PreloadScene), dan gebruiken we die in plaats van de stilstaande afbeelding
+    const animatieBeeldjes = this.registry.get('duikerFrames') ?? 0;
+    const sleutel = animatieBeeldjes > 0 ? 'duiker_01' : 'duiker';
+    const heeftBeeld = this.textures.exists(sleutel);
+
+    // De hoogte volgt uit de afbeelding, zodat de verhouding klopt
+    let hoogte = CONFIG.duikerBreedte / 2;
+    if (heeftBeeld) {
+      const frame = this.textures.getFrame(sleutel);
+      hoogte = (CONFIG.duikerBreedte * frame.height) / frame.width;
+    }
+
+    this.duiker = this.add.rectangle(x, y, CONFIG.duikerBreedte, hoogte, CONFIG.kleurDuiker);
+    this.physics.add.existing(this.duiker);
+    zetHitbox(this.duiker, CONFIG.hitbox.duiker);
+    this.duiker.body.setCollideWorldBounds(true); // niet buiten beeld
+
+    this.duikerBeeld = null;
+    if (!heeftBeeld) return;
+    this.duiker.setVisible(false);
+    const beeld = this.add.sprite(x, y, sleutel).setDepth(5);
+    beeld.setScale(CONFIG.duikerBreedte / beeld.width);
+    if (animatieBeeldjes > 0) beeld.play('duiker-zwem');
+    this.duikerBeeld = beeld;
+  }
+
+  // Het knipperen (onkwetsbaar) gebeurt op het zichtbare beeld
+  zetDuikerAlpha(alpha) {
+    (this.duikerBeeld ?? this.duiker).setAlpha(alpha);
+  }
+
+  // Elke beeldje: rustig deinen, kantelen met het sturen en af en toe bubbels uit de helm
+  updateDuikerBeeld(tijd, delta) {
+    const beeld = this.duikerBeeld;
+    if (!beeld) return;
+    const dt = Math.min(delta, 100) / 1000;
+
+    // Rustig op en neer deinen (alleen het beeld; de hitbox blijft waar hij is)
+    const dein = Math.sin((tijd / CONFIG.duikerDeinPeriode) * Math.PI * 2) * CONFIG.duikerDeinHoogte;
+
+    // Kantelen als hij omhoog (negatieve hoek: neus omhoog) of omlaag stuurt, en vloeiend terug naar horizontaal
+    const richting = this.fase === 'spelen' ? this.stuurRichting : 0;
+    const doel = richting * CONFIG.duikerKantelHoek;
+    this.kantel += (doel - this.kantel) * (1 - Math.exp(-CONFIG.duikerKantelSnelheid * dt));
+
+    beeld.setPosition(this.duiker.x, this.duiker.y + dein);
+    beeld.setAngle(this.kantel);
+    this.updateBubbels(delta);
+  }
+
+  // Af en toe een stoot van enkele bubbels uit de helm
+  updateBubbels(delta) {
+    const dt = Math.min(delta, 100) / 1000;
+    this.bubbelTimer -= delta;
+    if (this.bubbelTimer <= 0) {
+      this.bubbelTimer = Phaser.Math.Between(...CONFIG.duikerBubbelInterval);
+      const aantal = Phaser.Math.Between(...CONFIG.duikerBubbelsPerStoot);
+      for (let i = 0; i < aantal; i++) this.time.delayedCall(i * 160, () => this.maakDuikerBubbel());
+    }
+
+    // Bubbels stijgen, drijven met het water mee naar links (alleen als de wereld beweegt), zwaaien zachtjes en vervagen
+    const stroming = this.fase === 'spelen' ? this.snelheid * 0.9 : 0;
+    for (const b of this.bubbels) {
+      b.leeftijd += delta;
+      const t = b.leeftijd / b.duur;
+      b.obj.x += (-stroming + Math.sin(b.leeftijd / 260 + b.fase) * px(14)) * dt;
+      b.obj.y -= b.stijging * dt;
+      b.obj.setScale(1 + 0.35 * t).setAlpha(1 - t * t);
+    }
+    this.bubbels = this.bubbels.filter((b) => {
+      if (b.leeftijd < b.duur) return true;
+      b.obj.destroy();
+      return false;
+    });
+  }
+
+  maakDuikerBubbel() {
+    const beeld = this.duikerBeeld;
+    if (!beeld || this.isKlaar) return;
+    const punt = CONFIG.duikerBubbelPunt;
+    const [rMin, rMax] = CONFIG.duikerBubbelRadius;
+    const obj = this.add.circle(
+      beeld.x + (punt.x - 0.5) * beeld.displayWidth + Phaser.Math.Between(-px(3), px(3)),
+      beeld.y + (punt.y - 0.5) * beeld.displayHeight,
+      Phaser.Math.Between(rMin, rMax), 0xcdeeff, 0.9
+    ).setStrokeStyle(px(1.2), 0x000000, 1).setDepth(6); // lichte bubbel met een zwarte rand, passend bij de tekening
+    this.bubbels.push({
+      obj, leeftijd: 0, duur: Phaser.Math.Between(1100, 1900),
+      stijging: Phaser.Math.Between(px(40), px(75)), fase: Math.random() * Math.PI * 2,
+    });
+  }
+
   // Teken een gekleurd kader om elke hitbox (zoals Phaser hem echt gebruikt voor botsingen)
   tekenHitboxen() {
     const g = this.debugLaag;
@@ -116,6 +213,11 @@ export default class GameScene extends Phaser.Scene {
       g.lineStyle(px(1.5), kleur, 1);
       g.strokeRect(body.x, body.y, body.width, body.height);
     };
+    if (this.duikerBeeld) {
+      const b = this.duikerBeeld;
+      g.lineStyle(px(0.7), 0x888888, 1); // de afbeelding zelf (grijs)
+      g.strokeRect(b.x - b.displayWidth / 2, b.y - b.displayHeight / 2, b.displayWidth, b.displayHeight);
+    }
     kader(this.duiker.body, DEBUG_KLEUREN.duiker);
     for (const h of this.hindernissen.getChildren()) kader(h.body, DEBUG_KLEUREN[h.hindernisType]);
   }
@@ -123,6 +225,7 @@ export default class GameScene extends Phaser.Scene {
   update(tijd, delta) {
     if (this.isKlaar) return;
     if (this.debugAan) this.tekenHitboxen();
+    this.updateDuikerBeeld(tijd, delta); // deinen, kantelen en bubbels lopen altijd door
 
     // Tijdens het wachten en de countdown staat alles stil (ook de score)
     if (this.fase === 'wachten') return;
@@ -148,11 +251,11 @@ export default class GameScene extends Phaser.Scene {
     if (this.onkwetsbaarRest <= 0) return;
     this.onkwetsbaarRest -= delta;
     if (this.onkwetsbaarRest <= 0) {
-      this.duiker.setAlpha(1);
+      this.zetDuikerAlpha(1);
       return;
     }
     const stap = Math.floor(this.onkwetsbaarRest / CONFIG.knipperInterval);
-    this.duiker.setAlpha(stap % 2 === 0 ? 0.25 : 1);
+    this.zetDuikerAlpha(stap % 2 === 0 ? 0.25 : 1);
   }
 
   // De duiker raakt een hindernis
@@ -174,7 +277,7 @@ export default class GameScene extends Phaser.Scene {
     this.fase = 'wachten';
     this.hindernissen.clear(true, true); // verwijder alle hindernissen
     this.duiker.body.setVelocityY(0);
-    this.duiker.setAlpha(1);
+    this.zetDuikerAlpha(1);
     // De tekst staat lager op het scherm, behalve als de duiker daar zit: dan erboven
     const tekstY = this.duiker.y <= HOOGTE / 2 ? HOOGTE * 0.78 : HOOGTE * 0.22;
     this.wachtTekst.setY(tekstY).setVisible(true);
@@ -237,7 +340,8 @@ export default class GameScene extends Phaser.Scene {
       if (p.isDown) richting += p.y < HOOGTE / 2 ? -1 : 1;
     }
 
-    this.duiker.body.setVelocityY(Phaser.Math.Clamp(richting, -1, 1) * CONFIG.duikerSnelheid);
+    this.stuurRichting = Phaser.Math.Clamp(richting, -1, 1);
+    this.duiker.body.setVelocityY(this.stuurRichting * CONFIG.duikerSnelheid);
   }
 
   // Strepen en bubbels naar links; achteraan weer rechts invoegen
