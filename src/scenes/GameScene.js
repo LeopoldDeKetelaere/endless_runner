@@ -64,7 +64,12 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.duiker, this.hindernissen, () => this.geraakt());
     // De octopus-afbeeldingen volgen hun (onzichtbare) hitbox-object, pas nadat de physics bewogen heeft
     this.events.on('postupdate', this.updateOctopusBeelden, this);
-    this.events.once('shutdown', () => this.events.off('postupdate', this.updateOctopusBeelden, this));
+    // De octopussen bewegen we zelf, aan het begin van elke frame (voor de physics), zie beweegOctopussen
+    this.events.on('preupdate', this.beweegOctopussen, this);
+    this.events.once('shutdown', () => {
+      this.events.off('postupdate', this.updateOctopusBeelden, this);
+      this.events.off('preupdate', this.beweegOctopussen, this);
+    });
 
     // Besturing
     this.pijlen = this.input.keyboard.createCursorKeys();
@@ -384,17 +389,26 @@ export default class GameScene extends Phaser.Scene {
     }
 
     for (const h of this.hindernissen.getChildren().slice()) {
-      // Vissen zwemmen sneller dan de achtergrond, de rest beweegt mee
-      h.body.setVelocityX(-this.snelheid * h.snelheidFactor);
-
-      // Octopussen dobberen: golfbeweging rond hun basishoogte
-      if (h.amp > 0) {
-        h.leeftijd += delta;
-        const doel = h.basisY + h.amp * Math.sin((2 * Math.PI * h.leeftijd) / h.periode + h.fase);
-        h.body.setVelocityY((doel - h.y) / (delta / 1000));
-      }
+      // Vissen zwemmen sneller dan de achtergrond, de rest beweegt mee (octopussen: zie beweegOctopussen)
+      if (h.hindernisType !== 'octopus') h.body.setVelocityX(-this.snelheid * h.snelheidFactor);
 
       if (h.x + h.width / 2 < 0) h.destroy(); // uit beeld
+    }
+  }
+
+  // Octopussen bewegen we zelf, en alleen hier: elke frame, op basis van de verstreken tijd, naar links met
+  // de snelheid van de wereld en dobberend als een golf rond hun basishoogte. Dit gebeurt vóór de physics
+  // van die frame, zodat het (onzichtbare) lichaam met de hitbox precies meebeweegt. Via de physics-snelheid
+  // ging het schokkerig: de physics rekent in vaste stapjes van 1/60 s, los van de frames, en de dobberbeweging
+  // werd telkens opnieuw bijgestuurd. De pomp- en wiegbeweging staan in updateOctopusBeelden en raken het lichaam niet.
+  beweegOctopussen(tijd, delta) {
+    if (this.isKlaar || this.fase !== 'spelen') return;
+    const dt = Math.min(delta, 100) / 1000;
+    for (const h of this.hindernissen.getChildren()) {
+      if (h.hindernisType !== 'octopus') continue;
+      h.leeftijd += dt * 1000;
+      h.x -= this.snelheid * h.snelheidFactor * dt;
+      h.y = h.basisY + h.amp * Math.sin((2 * Math.PI * h.leeftijd) / h.periode + h.fase);
     }
   }
 
