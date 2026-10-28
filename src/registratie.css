@@ -8,7 +8,7 @@
   overflow: hidden;
   z-index: 10;
   box-sizing: border-box;
-  background: #0b1e4a;
+  background: transparent; /* de achtergrond van het spel (in Phaser) schijnt erdoorheen */
   color: #ffffff;
   font-family: "Press Start 2P", monospace;
   user-select: none;

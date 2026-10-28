@@ -3,6 +3,7 @@ import { BREEDTE, HOOGTE, CONFIG, px } from '../config.js';
 import { getTopScoresToday, getTopScoresAllTime, volgSchrijfFouten } from '../scoreService.js';
 import { voegTestspelersToe } from '../testdata.js';
 import { volgVerbinding } from '../firebase.js';
+import { maakAchtergrond } from '../achtergrond.js';
 
 const LETTERTYPE = '"Press Start 2P", monospace';
 const MARGE = px(16);
@@ -40,6 +41,7 @@ export default class StartScene extends Phaser.Scene {
     this.registry.remove('spelerId'); // een nieuwe speler moet zich eerst registreren
     this.events.once('shutdown', () => { this.afgesloten = true; });
     this.cameras.main.setBackgroundColor(CONFIG.kleurAchtergrond);
+    this.achtergrond = maakAchtergrond(this, { menu: true });
 
     // Titel
     this.add.text(BREEDTE / 2, px(36), CONFIG.spelTitel, {
@@ -134,6 +136,7 @@ export default class StartScene extends Phaser.Scene {
   }
 
   update(tijd, delta) {
+    this.achtergrond.update(delta);
     const duiker = this.startDuiker;
     if (!duiker) return;
     const dt = Math.min(delta, 100) / 1000;

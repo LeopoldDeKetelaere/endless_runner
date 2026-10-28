@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { BREEDTE, HOOGTE, CONFIG, px } from '../config.js';
 import { maakKolom, nieuweToestand } from '../hindernissen.js';
 import { submitScore } from '../scoreService.js';
+import { maakAchtergrond } from '../achtergrond.js';
 
 // Kleuren van de hitbox-kaders in de debugweergave (toets H)
 const DEBUG_KLEUREN = { duiker: 0x00ff00, rots: 0xff00ff, boot: 0x00ffff, octopus: 0xffffff, vis: 0xff0000 };
@@ -43,11 +44,9 @@ export default class GameScene extends Phaser.Scene {
     this.onkwetsbaarRest = 0;   // ms onkwetsbaarheid die nog over zijn
     this.eersteStart = true;    // de start van een spel: wel een countdown, maar geen onkwetsbaarheid
 
-    // Scrollend decor: strepen en bubbels
+    // Achtergrond (scrollt mee met de spelsnelheid) en scrollende bubbels
+    this.achtergrond = maakAchtergrond(this);
     this.decor = [];
-    for (let i = 0; i < 8; i++) {
-      this.maakStreep(Phaser.Math.Between(0, BREEDTE));
-    }
     for (let i = 0; i < 14; i++) {
       this.maakBubbel(Phaser.Math.Between(0, BREEDTE));
     }
@@ -368,8 +367,9 @@ export default class GameScene extends Phaser.Scene {
     this.duiker.body.setVelocityY(this.stuurRichting * CONFIG.duikerSnelheid);
   }
 
-  // Strepen en bubbels naar links; achteraan weer rechts invoegen
+  // Achtergrond en bubbels naar links; bubbels achteraan weer rechts invoegen
   beweegDecor(dt) {
+    this.achtergrond.update(dt * 1000, this.snelheid);
     for (const d of this.decor) {
       d.obj.x -= this.snelheid * d.factor * dt;
       if (d.obj.x + d.obj.width / 2 < 0) {
@@ -470,19 +470,11 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  maakStreep(x) {
-    const obj = this.add.rectangle(
-      x, Phaser.Math.Between(px(10), HOOGTE - px(10)),
-      Phaser.Math.Between(px(60), px(140)), px(3), CONFIG.kleurDecor, 0.6
-    );
-    this.decor.push({ obj, factor: 0.5 });
-  }
-
   maakBubbel(x) {
     const obj = this.add.circle(
       x, Phaser.Math.Between(px(10), HOOGTE - px(10)),
-      Phaser.Math.Between(px(2), px(5)), CONFIG.kleurDecor, 0.8
-    );
+      Phaser.Math.Between(px(2), px(5)), CONFIG.bubbelKleur, CONFIG.bubbelAlpha
+    ).setStrokeStyle(px(0.8), CONFIG.bubbelRandKleur, CONFIG.bubbelRandAlpha).setDepth(-50); // achter de hindernissen
     obj.width = obj.height = obj.radius * 2;
     this.decor.push({ obj, factor: 0.8 });
   }

@@ -3,6 +3,7 @@ import '../registratie.css';
 import { OVERLAY_BREEDTE, CONFIG } from '../config.js';
 import { registerPlayer } from '../scoreService.js';
 import { controleerTekst } from '../validatie.js';
+import { maakAchtergrond } from '../achtergrond.js';
 
 // Registratie in twee stappen: bedrijf en voornaam invullen, dan zien hoe je op het scorebord staat. Het formulier is gewone HTML die over het canvas ligt,
 // zodat typen vlot werkt. Alles gaat met het toetsenbord (er is geen muis).
@@ -49,6 +50,7 @@ export default class RegistratieScene extends Phaser.Scene {
     this.bezig = false;       // bezig met opslaan
     this.gegevens = null;     // gecontroleerde invoer uit stap 1
     this.cameras.main.setBackgroundColor(CONFIG.kleurAchtergrond);
+    this.achtergrond = maakAchtergrond(this, { menu: true }); // het formulier ligt (doorzichtig) hierover
 
     this.bouwFormulier();
 
@@ -70,6 +72,10 @@ export default class RegistratieScene extends Phaser.Scene {
     this.toonScherm('gegevens');
     this.focusVeld(0);
     this.startInactiviteitsTimer();
+  }
+
+  update(tijd, delta) {
+    this.achtergrond.update(delta);
   }
 
   // ---------------------------------------------------------------------------

@@ -24,6 +24,8 @@ export const AFBEELDINGEN = [
   // Beide worden gemaakt met:  npm run duiker  (uit assets-bron/duiker.png)
   { sleutel: 'octopus', bestand: 'octopus.png' },            // de octopus (alleen als hindernis in het spel)
   // De octopus wordt gemaakt met:  npm run octopus  (uit assets-bron/octopus.png)
+  { sleutel: 'achtergrond', bestand: 'achtergrond.png' },    // de naadloze achtergrondstrook (1920x1080)
+  // Wordt gemaakt met:  npm run achtergrond  (uit assets-bron/achtergrond.png)
 ];
 
 export const GELUIDEN = [

@@ -3,6 +3,7 @@ import '../registratie.css';
 import { CONFIG } from '../config.js';
 import { firebaseGeconfigureerd, huidigeGebruiker, logIn } from '../firebase.js';
 import { maakLaag, maakElement } from '../laag.js';
+import { maakAchtergrond } from '../achtergrond.js';
 
 // Inloggen voor het personeel. Verschijnt vóór het startscherm als er niemand is ingelogd.
 // Zelfde aanpak als de registratie: een HTML-formulier over het canvas, alles met het
@@ -27,11 +28,16 @@ export default class LoginScene extends Phaser.Scene {
     super('LoginScene');
   }
 
+  update(tijd, delta) {
+    this.achtergrond?.update(delta);
+  }
+
   create() {
     this.afgesloten = false;
     this.bezig = false;
     this.actief = 0;
     this.cameras.main.setBackgroundColor(CONFIG.kleurAchtergrond);
+    this.achtergrond = maakAchtergrond(this, { menu: true }); // het formulier ligt (doorzichtig) hierover
     this.events.once('shutdown', () => this.opruimen());
 
     if (!firebaseGeconfigureerd) {

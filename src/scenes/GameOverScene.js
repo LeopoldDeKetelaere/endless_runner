@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BREEDTE, HOOGTE, CONFIG, px } from '../config.js';
+import { maakAchtergrond } from '../achtergrond.js';
 
 export default class GameOverScene extends Phaser.Scene {
   constructor() {
@@ -7,6 +8,7 @@ export default class GameOverScene extends Phaser.Scene {
   }
 
   create(data) {
+    this.achtergrond = maakAchtergrond(this, { menu: true });
     const midden = BREEDTE / 2;
     this.add.text(midden, HOOGTE * 0.28, 'Helaas, verloren', {
       fontSize: px(56) + 'px', color: '#ffffff',
@@ -34,5 +36,9 @@ export default class GameOverScene extends Phaser.Scene {
 
     // Doet niemand iets, dan gaat het scherm vanzelf naar het scorebord
     this.time.delayedCall(CONFIG.gameOverSeconden * 1000, () => this.scene.start('StartScene'));
+  }
+
+  update(tijd, delta) {
+    this.achtergrond.update(delta);
   }
 }

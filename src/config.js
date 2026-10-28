@@ -157,6 +157,32 @@ export const CONFIG = {
   pixelsPerMeter: 120,
 
   // Kleuren
-  kleurAchtergrond: 0x0b1e4a,
-  kleurDecor: 0x2a4a8c,
+  kleurAchtergrond: 0x0b1e4a,   // effen kleur achter alles (en in de menuschermen het donkere vlak)
+
+  // Achtergrond: de naadloze textuur (npm run achtergrond), eindeloos scrollend naar links
+  achtergrond: {
+    aan: true,
+    // Hoofdlaag. De snelheden zijn een fractie van de spelsnelheid (0.25 = een kwart), dus de achtergrond versnelt mee.
+    hoofdSnelheid: 0.25,
+    hoofdAlpha: 1,
+    // Tweede laag voor diepte: dezelfde textuur, groter, half doorzichtig en trager
+    laag2Aan: true,
+    laag2Schaal: 1.5,
+    laag2Alpha: 0.5,
+    laag2Snelheid: 0.12,
+    laag2Start: 700,        // beginpositie (pixels van de afbeelding), zodat de vlekken niet over elkaar liggen
+    // Kleurverloop erover: bovenaan lichter, onderaan donkerder blauw (zet verloopAan op false om te vergelijken)
+    verloopAan: true,
+    verloopBoven: 0x3b78b8, verloopBovenAlpha: 0.4,
+    verloopOnder: 0x061838, verloopOnderAlpha: 0.72,
+    // Menuschermen (start, inloggen, registratie, game over): stilstaand of heel traag
+    menuSnelheid: 10,       // pixels per seconde (0 = stilstaand)
+    menuVeilAlpha: 0.35,    // donker, half doorzichtig vlak over de achtergrond, voor leesbare tekst (0 = geen)
+  },
+
+  // Bubbels in het spel: doorschijnend wit met een dun, donkerder randje
+  bubbelKleur: 0xffffff,
+  bubbelAlpha: 0.35,
+  bubbelRandKleur: 0x1c3a6e,
+  bubbelRandAlpha: 0.9,
 };
