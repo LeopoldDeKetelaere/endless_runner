@@ -11,7 +11,8 @@ rules_version = '2';
 // - Wie niet is ingelogd, kan niets lezen of schrijven.
 // - Het stand-account (het spel op de stand) mag alleen wat het spel echt nodig heeft.
 // - Het admin-account mag lezen en verwijderen. Alleen het admin-account mag iets verwijderen.
-// - Het scorebord mag alleen bedrijf, voornaam, score en tijdstip bevatten (nooit e-mail, telefoon of achternaam).
+// - Een speler bevat alleen bedrijf, voornaam en registratiedatum; het scorebord alleen bedrijf, voornaam, score en tijdstip.
+// - Er worden geen contactgegevens bewaard.
 
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -40,7 +41,7 @@ service cloud.firestore {
     function geheelGetal(waarde, min, max) {
       return waarde is int && waarde >= min && waarde <= max;
     }
-    // Spelers-id = SHA-256 van het e-mailadres: 64 tekens uit 0-9 en a-f
+    // Spelers-id = SHA-256 van bedrijf + "|" + voornaam: 64 tekens uit 0-9 en a-f
     function geldigId(id) {
       return id.matches('^[0-9a-f]{64}$');
     }
@@ -49,20 +50,13 @@ service cloud.firestore {
       return !('test' in d) || d.test == true;
     }
 
-    // Een nieuwe speler: alle verplichte velden, juiste soort, redelijke lengte, toestemming = true
+    // Een nieuwe speler: enkel bedrijf (maximaal 40 tekens), voornaam (maximaal 20 tekens) en registratiedatum.
+    // De maxima moeten gelijk zijn aan maxBedrijfTekens en maxVoornaamTekens in config.js.
     function geldigeSpeler(d) {
-      return d.keys().hasAll(['voornaam', 'achternaam', 'bedrijf', 'email', 'telefoon',
-                              'toestemmingDeelname', 'nieuwsbrief', 'toestemmingTijdstip', 'aangemaaktOp'])
-        && d.keys().hasOnly(['voornaam', 'achternaam', 'bedrijf', 'email', 'telefoon',
-                             'toestemmingDeelname', 'nieuwsbrief', 'toestemmingTijdstip', 'aangemaaktOp', 'test'])
-        && tekst(d.voornaam, 1, 100)
-        && tekst(d.achternaam, 1, 100)
-        && tekst(d.bedrijf, 1, 100)
-        && tekst(d.email, 5, 100) && d.email.matches('^[^@ ]+@[^@ ]+[.][^@ ]{2,}$')
-        && tekst(d.telefoon, 8, 20) && d.telefoon.matches('^[+]?[0-9]{8,17}$')
-        && d.toestemmingDeelname == true
-        && d.nieuwsbrief is bool
-        && d.toestemmingTijdstip is timestamp
+      return d.keys().hasAll(['bedrijf', 'voornaam', 'aangemaaktOp'])
+        && d.keys().hasOnly(['bedrijf', 'voornaam', 'aangemaaktOp', 'test'])
+        && tekst(d.bedrijf, 1, 40)
+        && tekst(d.voornaam, 1, 20)
         && d.aangemaaktOp is timestamp
         && testVeldOk(d);
     }
@@ -96,11 +90,8 @@ service cloud.firestore {
       allow list: if admin();
       // Nieuwe speler aanmaken: alleen de stand, met geldige gegevens
       allow create: if stand() && geldigId(spelerId) && geldigeSpeler(request.resource.data);
-      // Bestaande speler: de stand mag enkel nieuwsbrief en toestemmingTijdstip wijzigen
-      allow update: if stand()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nieuwsbrief', 'toestemmingTijdstip'])
-        && request.resource.data.nieuwsbrief is bool
-        && request.resource.data.toestemmingTijdstip is timestamp;
+      // Een bestaande speler wijzigen mag niemand (er is niets meer om bij te werken)
+      allow update: if false;
       allow delete: if admin();
     }
 

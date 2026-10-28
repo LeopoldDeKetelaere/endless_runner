@@ -1,10 +1,10 @@
 import Phaser from 'phaser';
 import '../registratie.css';
 import { OVERLAY_BREEDTE, CONFIG } from '../config.js';
-import { registerPlayer, findPlayerByEmail, updateNewsletterConsent } from '../scoreService.js';
-import { controleerTekst, controleerEmail, controleerTelefoon } from '../validatie.js';
+import { registerPlayer } from '../scoreService.js';
+import { controleerTekst } from '../validatie.js';
 
-// Registratie in twee stappen. Het formulier is gewone HTML die over het canvas ligt,
+// Registratie in twee stappen: bedrijf en voornaam invullen, dan zien hoe je op het scorebord staat. Het formulier is gewone HTML die over het canvas ligt,
 // zodat typen vlot werkt. Alles gaat met het toetsenbord (er is geen muis).
 //
 // Belangrijk: Phaser vangt toetsen als spatie en pijltjes op en blokkeert dan het typen
@@ -13,28 +13,18 @@ import { controleerTekst, controleerEmail, controleerTelefoon } from '../validat
 
 // De velden van stap 1, in volgorde
 const VELDEN = [
-  { naam: 'voornaam', label: 'VOORNAAM', controle: (w) => controleerTekst(w, 'VUL JE VOORNAAM IN') },
-  { naam: 'achternaam', label: 'ACHTERNAAM', controle: (w) => controleerTekst(w, 'VUL JE ACHTERNAAM IN') },
-  { naam: 'bedrijf', label: 'BEDRIJF / HORECAZAAK', controle: (w) => controleerTekst(w, 'VUL JE BEDRIJF IN') },
-  { naam: 'email', label: 'E-MAILADRES', modus: 'email', controle: controleerEmail },
-  { naam: 'telefoon', label: 'TELEFOONNUMMER', modus: 'tel', controle: controleerTelefoon },
-];
-
-// De keuzes van stap 2
-const KEUZES = [
-  { tekst: 'JA, IK DOE MEE + STUUR ME NIEUWS', nieuwsbrief: true },
-  { tekst: 'JA, IK DOE MEE ZONDER NIEUWS', nieuwsbrief: false },
-  { tekst: 'NEE, IK DOE NIET MEE' },
-];
+  { naam: 'bedrijf', label: 'BEDRIJF / HORECAZAAK', max: CONFIG.maxBedrijfTekens, fout: 'VUL JE BEDRIJF IN' },
+  { naam: 'voornaam', label: 'VOORNAAM', max: CONFIG.maxVoornaamTekens, fout: 'VUL JE VOORNAAM IN' },
+].map((veld) => ({ ...veld, controle: (w) => controleerTekst(w, veld.max, veld.fout) }));
 
 const HULP_GEGEVENS = 'ENTER = VOLGENDE   ↑↓ = VELD WISSELEN   ESC = ANNULEREN';
-const HULP_TOESTEMMING = '↑↓ = KIEZEN   ENTER = BEVESTIGEN   P = PRIVACYVERKLARING   ESC = TERUG';
+const HULP_INFO = 'ENTER = SPELEN   ESC = TERUG AANPASSEN   P = PRIVACYVERKLARING';
 
 const PRIVACY_TEKST = [
   'DIT IS EEN PLACEHOLDERTEKST. DE DEFINITIEVE PRIVACYVERKLARING VOLGT NOG.',
-  'GEGEVENS: VOORNAAM, ACHTERNAAM, BEDRIJF, E-MAILADRES EN TELEFOONNUMMER.',
-  'DOEL: DEELNAME AAN DEZE WEDSTRIJD EN HET CONTACTEREN VAN DE WINNAAR. ALS JE DAARVOOR KIEST, STUREN WE JE OOK NIEUWS EN AANBIEDINGEN.',
-  'OP HET SCOREBORD STAAN ALLEEN JE BEDRIJF, JE VOORNAAM EN JE SCORE. JE E-MAILADRES EN TELEFOONNUMMER WORDEN NOOIT GETOOND.',
+  'GEGEVENS: JE BEDRIJF EN JE VOORNAAM, MET JE SCORES.',
+  'DOEL: HET SCOREBORD EN DE WEDSTRIJD OP DEZE STAND.',
+  'OP HET SCOREBORD STAAN ALLEEN JE BEDRIJF, JE VOORNAAM EN JE SCORE.',
   'BEWAARTERMIJN: [NOG IN TE VULLEN].',
   'INZAGE OF WISSEN VAN JE GEGEVENS: [CONTACTGEGEVENS NOG IN TE VULLEN].',
 ];
@@ -54,9 +44,8 @@ export default class RegistratieScene extends Phaser.Scene {
 
   create() {
     this.afgesloten = false;
-    this.scherm = 'gegevens'; // 'gegevens', 'toestemming', 'privacy', 'nee' of 'welkom'
+    this.scherm = 'gegevens'; // 'gegevens', 'info', 'privacy' of 'welkom'
     this.actief = 0;          // welk veld is actief
-    this.keuze = -1;          // gekozen optie in stap 2 (-1 = nog niets gekozen)
     this.bezig = false;       // bezig met opslaan
     this.gegevens = null;     // gecontroleerde invoer uit stap 1
     this.cameras.main.setBackgroundColor(CONFIG.kleurAchtergrond);
@@ -113,8 +102,7 @@ export default class RegistratieScene extends Phaser.Scene {
       input.setAttribute('data-lpignore', 'true'); // wachtwoordmanagers negeren dit veld
       input.setAttribute('data-1p-ignore', 'true');
       input.spellcheck = false;
-      input.maxLength = veld.naam === 'bedrijf' ? CONFIG.maxBedrijfTekens : 100;
-      if (veld.modus) input.inputMode = veld.modus;
+      input.maxLength = veld.max;
       // Zodra je typt, verdwijnt de foutmelding van dit veld
       input.addEventListener('input', () => this.wisFout(i));
       // Focus nooit kwijtraken (geen muis): terugzetten als het veld toch focus verliest
@@ -134,26 +122,14 @@ export default class RegistratieScene extends Phaser.Scene {
     s1.append(maak('p', 'reg-hulp', HULP_GEGEVENS));
     this.schermen.gegevens = s1;
 
-    // Stap 2: toestemming
+    // Stap 2: zo sta je op het scorebord
     const s2 = maak('div', 'reg-scherm');
-    s2.append(maak('h1', 'reg-titel', 'TOESTEMMING'));
-    s2.append(maak('p', 'reg-vraag',
-      'WE BEWAREN JE GEGEVENS VOOR DEZE WEDSTRIJD EN OM DE WINNAAR TE CONTACTEREN. ' +
-      'MOGEN WE JE OOK NIEUWS EN AANBIEDINGEN STUREN?'));
-    this.keuzeRijen = KEUZES.map((k) => {
-      const rij = maak('div', 'reg-keuze');
-      rij.append(maak('span', 'reg-pijl rechts'), maak('span', '', k.tekst), maak('span', 'reg-pijl links'));
-      s2.append(rij);
-      return rij;
-    });
+    s2.append(maak('h1', 'reg-titel', 'SCOREBORD'));
+    s2.append(maak('p', 'reg-vraag', 'JE VOORNAAM EN BEDRIJF VERSCHIJNEN OP HET SCOREBORD.'));
+    this.voorbeeld = maak('p', 'reg-voorbeeld');
     this.melding = maak('p', 'reg-melding');
-    s2.append(this.melding, maak('p', 'reg-hulp', HULP_TOESTEMMING));
-    this.schermen.toestemming = s2;
-
-    // Bij 'nee'
-    const nee = maak('div', 'reg-scherm reg-midden');
-    nee.append(maak('p', 'reg-groot', 'ZONDER AKKOORD KAN JE HELAAS NIET DEELNEMEN. DRUK OP ENTER OM TERUG TE GAAN.'));
-    this.schermen.nee = nee;
+    s2.append(this.voorbeeld, this.melding, maak('p', 'reg-hulp', HULP_INFO));
+    this.schermen.info = s2;
 
     // Terugkerende speler
     const welkom = maak('div', 'reg-scherm reg-midden');
@@ -167,7 +143,7 @@ export default class RegistratieScene extends Phaser.Scene {
     PRIVACY_TEKST.forEach((tekst) => this.modal.append(maak('p', '', tekst)));
     this.modal.append(maak('p', 'reg-hulp', 'ESC OF ENTER = SLUITEN'));
 
-    this.wrap.append(s1, s2, nee, welkom, this.modal);
+    this.wrap.append(s1, s2, welkom, this.modal);
     document.body.append(this.wrap);
   }
 
@@ -183,7 +159,7 @@ export default class RegistratieScene extends Phaser.Scene {
   toonScherm(naam) {
     this.scherm = naam;
     for (const [sleutel, el] of Object.entries(this.schermen)) {
-      el.classList.toggle('zichtbaar', sleutel === naam || (naam === 'privacy' && sleutel === 'toestemming'));
+      el.classList.toggle('zichtbaar', sleutel === naam || (naam === 'privacy' && sleutel === 'info'));
     }
     this.modal.classList.toggle('zichtbaar', naam === 'privacy');
   }
@@ -198,9 +174,8 @@ export default class RegistratieScene extends Phaser.Scene {
 
     switch (this.scherm) {
       case 'gegevens': this.toetsGegevens(e); break;
-      case 'toestemming': this.toetsToestemming(e); break;
+      case 'info': this.toetsInfo(e); break;
       case 'privacy': this.toetsPrivacy(e); break;
-      case 'nee': this.toetsNee(e); break;
       default: e.preventDefault(); // 'welkom': even niets doen
     }
   }
@@ -219,32 +194,22 @@ export default class RegistratieScene extends Phaser.Scene {
     else if (e.key === 'Escape') this.naarStartscherm();
   }
 
-  // Stap 2
-  toetsToestemming(e) {
+  // Stap 2: Enter = registreren en spelen, Esc = terug naar stap 1 (alles blijft ingevuld), P = privacyverklaring
+  toetsInfo(e) {
     const toets = e.key.toLowerCase();
-    if (!['arrowup', 'arrowdown', 'enter', 'escape', 'p', ' '].includes(toets)) return;
+    if (!['enter', 'escape', 'p'].includes(toets)) return;
     e.preventDefault();
     if (e.repeat) return;
 
-    if (toets === 'arrowdown') this.kies(this.keuze < 0 ? 0 : this.keuze + 1);
-    else if (toets === 'arrowup') this.kies(this.keuze < 0 ? 0 : this.keuze - 1);
-    else if (toets === 'enter' && this.keuze >= 0) this.bevestigKeuze();
-    else if (toets === 'escape') { this.toonScherm('gegevens'); this.focusVeld(this.actief); }
-    else if (toets === 'p') this.toonScherm('privacy');
+    if (toets === 'enter') this.registreer();
+    else if (toets === 'escape') { this.melding.textContent = ''; this.toonScherm('gegevens'); this.focusVeld(this.actief); }
+    else this.toonScherm('privacy');
   }
 
   toetsPrivacy(e) {
     e.preventDefault();
     if (e.repeat) return;
-    if (e.key === 'Enter' || e.key === 'Escape') this.toonScherm('toestemming');
-  }
-
-  toetsNee(e) {
-    if (e.key !== 'Enter' && e.key !== 'Escape') return;
-    e.preventDefault();
-    if (e.repeat) return;
-    if (e.key === 'Enter') this.naarStartscherm();
-    else { this.kies(-1); this.toonScherm('toestemming'); } // Escape: terug naar de keuze
+    if (e.key === 'Enter' || e.key === 'Escape') this.toonScherm('info');
   }
 
   // ---------------------------------------------------------------------------
@@ -289,47 +254,26 @@ export default class RegistratieScene extends Phaser.Scene {
     }
     this.gegevens = gegevens;
     this.melding.textContent = '';
-    this.kies(-1); // bij het openen is er geen keuze geselecteerd
-    this.toonScherm('toestemming');
+    // Zo komt de speler op het scorebord te staan, zodat een tikfout nog zichtbaar is
+    this.voorbeeld.textContent = `${gegevens.bedrijf} (${gegevens.voornaam})`.toUpperCase();
+    this.toonScherm('info');
   }
 
   // ---------------------------------------------------------------------------
-  // Stap 2: toestemming
+  // Stap 2: registreren en spelen
   // ---------------------------------------------------------------------------
-  kies(nummer) {
-    this.keuze = nummer < 0 ? -1 : Phaser.Math.Clamp(nummer, 0, KEUZES.length - 1);
-    this.keuzeRijen.forEach((rij, i) => rij.classList.toggle('gekozen', i === this.keuze));
-  }
 
-  bevestigKeuze() {
-    const keuze = KEUZES[this.keuze];
-    if (keuze.nieuwsbrief === undefined) {
-      this.toonScherm('nee'); // 'NEE, IK DOE NIET MEE'
-      return;
-    }
-    this.registreer(keuze.nieuwsbrief);
-  }
-
-  // Speler opslaan (of herkennen aan het e-mailadres) en het spel starten
-  async registreer(nieuwsbrief) {
+  // Speler opslaan (of herkennen aan bedrijf en voornaam) en het spel starten
+  async registreer() {
     this.bezig = true;
     this.melding.textContent = '';
     try {
-      const g = this.gegevens;
-      const bekend = await findPlayerByEmail(g.email);
-      let spelerId;
-      if (bekend) {
-        // Terugkerende speler: bestaande gegevens blijven, alleen de nieuwsbriefkeuze wordt bijgewerkt
-        await updateNewsletterConsent(bekend.id, nieuwsbrief);
-        spelerId = bekend.id;
-      } else {
-        spelerId = await registerPlayer({ ...g, toestemming: true, nieuwsbrief });
-      }
+      const speler = await registerPlayer(this.gegevens);
       if (this.afgesloten) return; // intussen is het scherm al verlaten (bv. door de inactiviteitstimer)
-      this.registry.set('spelerId', spelerId); // het spel weet nu wie er speelt
+      this.registry.set('spelerId', speler.id); // het spel weet nu wie er speelt
 
-      if (bekend) {
-        this.welkomTekst.textContent = `WELKOM TERUG, ${bekend.voornaam.toUpperCase()}!`;
+      if (speler.bestaand) {
+        this.welkomTekst.textContent = `WELKOM TERUG, ${speler.voornaam.toUpperCase()}!`;
         this.toonScherm('welkom');
         await new Promise((klaar) => setTimeout(klaar, CONFIG.welkomTerugSeconden * 1000));
         if (this.afgesloten) return;
@@ -350,7 +294,7 @@ export default class RegistratieScene extends Phaser.Scene {
   wisAlles() {
     this.invoer?.forEach((input, i) => { input.value = ''; this.wisFout(i); });
     this.gegevens = null;
-    this.kies(-1);
+    this.voorbeeld.textContent = '';
   }
 
   naarStartscherm() {
@@ -364,7 +308,7 @@ export default class RegistratieScene extends Phaser.Scene {
     this.scene.start('GameScene');
   }
 
-  // 60 seconden geen toets: alles wissen en terug naar het startscherm
+  // Een tijd lang geen toets: alles wissen en terug naar het startscherm
   startInactiviteitsTimer() {
     clearTimeout(this.inactiefTimer);
     this.inactiefTimer = setTimeout(() => {

@@ -156,21 +156,15 @@ export async function wisAlles(opties = {}) {
 
 const naarDatum = (tijdstip) => tijdstip?.toDate?.() ?? null;
 
-// Alle spelers uit 'players' (met persoonsgegevens: alleen het admin-account mag dit)
+// Alle spelers uit 'players' (alleen het admin-account mag de hele lijst lezen)
 export async function laadSpelers() {
   const snap = await getDocs(collection(db, 'players'));
   return snap.docs.map((document) => {
     const x = document.data();
     return {
       id: document.id,
-      voornaam: x.voornaam ?? '',
-      achternaam: x.achternaam ?? '',
       bedrijf: x.bedrijf ?? '',
-      email: x.email ?? '',
-      telefoon: x.telefoon ?? '',
-      toestemmingDeelname: x.toestemmingDeelname === true,
-      nieuwsbrief: x.nieuwsbrief === true,
-      toestemmingTijdstip: naarDatum(x.toestemmingTijdstip),
+      voornaam: x.voornaam ?? '',
       aangemaaktOp: naarDatum(x.aangemaaktOp),
       test: x.test === true,
     };

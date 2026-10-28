@@ -340,7 +340,6 @@ function maakTabel(kolommen, rijen, { sorteer, klasse } = {}) {
 }
 
 const badgeTest = (rij) => (rij.test ? el('span', 'badge', 'test') : '');
-const jaNee = (waarde) => (waarde ? 'ja' : 'nee');
 
 // ---------------------------------------------------------------------------
 // Tabblad Klassementen
@@ -446,7 +445,6 @@ function tekenDeelnemers({ spelers, spellen }) {
   const knoppen = el('div', 'knoppenrij');
   knoppen.append(
     knopMetActie('Exporteer deelnemers', 'knop primair', () => exporteer('deelnemers', KOLOMMEN_DEELNEMERS, filterTest(alle, weergave.testMeenemen))),
-    knopMetActie('Exporteer enkel nieuwsbrief-inschrijvingen', 'knop', () => exporteer('nieuwsbrief', KOLOMMEN_DEELNEMERS, filterTest(alle, weergave.testMeenemen).filter((d) => d.nieuwsbrief))),
     knopMetActie('Exporteer alle spellen', 'knop', () => exporteer('spellen', KOLOMMEN_SPELLEN, spellenMetNaam(spellen, spelers, weergave.testMeenemen))),
   );
   exportKaart.append(knoppen, uitvoer);
@@ -456,19 +454,15 @@ function tekenDeelnemers({ spelers, spellen }) {
   const titel = el('h2');
   const zoekveld = el('input');
   zoekveld.type = 'search';
-  zoekveld.placeholder = 'Zoek op naam, bedrijf of e-mail';
+  zoekveld.placeholder = 'Zoek op bedrijf of voornaam';
   zoekveld.autocomplete = 'off';
   zoekveld.value = weergave.zoek;
   zoekveld.setAttribute('aria-label', 'Zoeken');
   const lijst = el('div');
 
   const kolommen = [
-    { kop: 'Voornaam', sleutel: 'voornaam', waarde: (d) => d.voornaam },
-    { kop: 'Achternaam', sleutel: 'achternaam', waarde: (d) => d.achternaam },
     { kop: 'Bedrijf', sleutel: 'bedrijf', waarde: (d) => d.bedrijf },
-    { kop: 'E-mail', sleutel: 'email', waarde: (d) => d.email },
-    { kop: 'Telefoon', sleutel: 'telefoon', waarde: (d) => d.telefoon },
-    { kop: 'Nieuwsbrief', sleutel: 'nieuwsbrief', waarde: (d) => jaNee(d.nieuwsbrief) },
+    { kop: 'Voornaam', sleutel: 'voornaam', waarde: (d) => d.voornaam },
     { kop: 'Geregistreerd', sleutel: 'aangemaaktOp', waarde: (d) => formatTijdstip(d.aangemaaktOp) },
     { kop: 'Beste score', sleutel: 'besteScore', waarde: (d) => (d.besteScore === null ? '-' : String(d.besteScore)) },
     { kop: 'Spellen', sleutel: 'aantalSpellen', waarde: (d) => String(d.aantalSpellen) },
@@ -486,7 +480,7 @@ function tekenDeelnemers({ spelers, spellen }) {
       richting: weergave.sorteerRichting,
       kies: (kolom) => {
         if (kolom === weergave.sorteerKolom) weergave.sorteerRichting = weergave.sorteerRichting === 'asc' ? 'desc' : 'asc';
-        else { weergave.sorteerKolom = kolom; weergave.sorteerRichting = ['aangemaaktOp', 'besteScore', 'aantalSpellen', 'nieuwsbrief'].includes(kolom) ? 'desc' : 'asc'; }
+        else { weergave.sorteerKolom = kolom; weergave.sorteerRichting = ['aangemaaktOp', 'besteScore', 'aantalSpellen'].includes(kolom) ? 'desc' : 'asc'; }
         teken();
       },
     };
@@ -519,12 +513,12 @@ function tekenDeelnemers({ spelers, spellen }) {
 }
 
 async function verwijderDeelnemer(speler) {
-  const naam = `${speler.voornaam} ${speler.achternaam}`.trim();
+  const naam = speler.voornaam;
   const antwoord = await vraag({
     titel: `${naam} volledig verwijderen?`,
     regels: [
       `${naam} van ${speler.bedrijf} wordt volledig gewist (GDPR):`,
-      '• de gegevens van de speler, inclusief e-mailadres en telefoonnummer',
+      '• de gegevens van de speler (bedrijf en voornaam)',
       `• alle gespeelde spellen (${speler.aantalSpellen})`,
       '• alle regels in alle klassementen',
       'Dit kan niet ongedaan gemaakt worden.',
@@ -547,23 +541,22 @@ async function verwijderDeelnemer(speler) {
 // Tabblad Winnaars
 // ---------------------------------------------------------------------------
 function toonWinnaars() {
-  laadEnTeken('winnaars', async () => ({ ...(await laadKlassementenData()), ...(await laadSpelersData()) }), tekenWinnaars);
+  laadEnTeken('winnaars', laadKlassementenData, tekenWinnaars);
 }
 
 function maakWinnaarsTabel(winnaars) {
   return maakTabel([
     { kop: 'Plaats', waarde: (w) => String(w.plaats) },
-    { kop: 'Naam', waarde: (w) => `${w.voornaam} ${w.achternaam}`.trim() },
     { kop: 'Bedrijf', waarde: (w) => w.bedrijf },
-    { kop: 'E-mail', waarde: (w) => w.email },
-    { kop: 'Telefoon', waarde: (w) => w.telefoon },
+    { kop: 'Voornaam', waarde: (w) => w.voornaam },
     { kop: 'Score', waarde: (w) => String(w.score) },
+    { kop: 'Tijdstip', waarde: (w) => formatTijdstip(w.tijdstip) },
     { kop: 'Test', waarde: badgeTest },
   ], winnaars);
 }
 
-function tekenWinnaars({ algemeen, dagen, spelers }) {
-  const winnaars = bepaalWinnaars({ algemeen, dagen, spelers, metTest: weergave.testMeenemen });
+function tekenWinnaars({ algemeen, dagen }) {
+  const winnaars = bepaalWinnaars({ algemeen, dagen, metTest: weergave.testMeenemen });
   const lijst = winnaarsAlsLijst(winnaars);
 
   const exportKaart = el('section', 'kaart');
@@ -604,7 +597,7 @@ function tekenStatistieken({ spelers, spellen }) {
 
   const tegels = el('div', 'tegels');
   for (const [label, waarde] of [
-    ['Registraties', s.registraties], ['Gespeelde spellen', s.spellen], ['Nieuwsbrief-inschrijvingen', s.nieuwsbrief],
+    ['Registraties', s.registraties], ['Gespeelde spellen', s.spellen],
     ['Gemiddelde score', getal(s.gemiddelde)], ['Hoogste score', getal(s.hoogste)],
   ]) {
     const tegel = el('div', 'tegel');

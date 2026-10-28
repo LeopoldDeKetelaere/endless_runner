@@ -26,12 +26,12 @@ export const filterTest = (lijst, metTest) => (metTest ? lijst : lijst.filter((x
 // Tekst vergelijkbaar maken: kleine letters en zonder accenten ('Café' vindt 'cafe')
 const normaal = (tekst) => String(tekst ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
-// Zoeken op naam, bedrijf of e-mail. Alle woorden die je typt moeten ergens voorkomen.
+// Zoeken op bedrijf of voornaam. Alle woorden die je typt moeten ergens voorkomen.
 export function zoekDeelnemers(lijst, zoektekst) {
   const woorden = normaal(zoektekst).split(/\s+/).filter(Boolean);
   if (woorden.length === 0) return lijst;
   return lijst.filter((d) => {
-    const tekst = normaal(`${d.voornaam} ${d.achternaam} ${d.bedrijf} ${d.email}`);
+    const tekst = normaal(`${d.bedrijf} ${d.voornaam}`);
     return woorden.every((woord) => tekst.includes(woord));
   });
 }
@@ -77,7 +77,6 @@ export function berekenStatistieken(spelers, spellen, metTest = false) {
   return {
     registraties: s.length,
     spellen: g.length,
-    nieuwsbrief: s.filter((x) => x.nieuwsbrief === true).length,
     gemiddelde: gemiddelde(scores),
     hoogste: hoogste(scores),
     perDag: [...dagen.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([d, x]) => ({
@@ -90,25 +89,19 @@ export function berekenStatistieken(spelers, spellen, metTest = false) {
 // Winnaars
 // ---------------------------------------------------------------------------
 
-// De top 3 van de algemene lijst en van elke dag, met contactgegevens uit de spelerslijst.
+// De top 3 van de algemene lijst en van elke dag (bedrijf, voornaam, score en tijdstip).
 // algemeen: [{ id, bedrijf, voornaam, score, tijdstip, test }]; dagen: [{ dag, regels }]
-export function bepaalWinnaars({ algemeen, dagen, spelers, metTest = false }) {
-  const perId = new Map(spelers.map((s) => [s.id, s]));
-  const top3 = (regels, klassement) => sorteerRegels(filterTest(regels, metTest)).slice(0, 3).map((r, i) => {
-    const speler = perId.get(r.id);
-    return {
-      klassement,
-      plaats: i + 1,
-      id: r.id,
-      voornaam: speler?.voornaam ?? r.voornaam,
-      achternaam: speler?.achternaam ?? '',
-      bedrijf: speler?.bedrijf ?? r.bedrijf,
-      email: speler?.email ?? '',
-      telefoon: speler?.telefoon ?? '',
-      score: r.score,
-      test: r.test === true,
-    };
-  });
+export function bepaalWinnaars({ algemeen, dagen, metTest = false }) {
+  const top3 = (regels, klassement) => sorteerRegels(filterTest(regels, metTest)).slice(0, 3).map((r, i) => ({
+    klassement,
+    plaats: i + 1,
+    id: r.id,
+    bedrijf: r.bedrijf,
+    voornaam: r.voornaam,
+    score: r.score,
+    tijdstip: r.tijdstip,
+    test: r.test === true,
+  }));
   return {
     algemeen: top3(algemeen, 'Algemeen'),
     perDag: dagen

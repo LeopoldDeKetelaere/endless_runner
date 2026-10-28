@@ -2,13 +2,13 @@
 // De rest van het spel gebruikt alleen de functies hieronder (allemaal async).
 //
 // Gegevensmodel (persoonsgegevens en scorebord strikt gescheiden):
-// - players/{spelerId}                         persoonsgegevens (alleen voor het personeel)
-//     spelerId = SHA-256 van het e-mailadres in kleine letters, zonder spaties vooraan of achteraan
+// - players/{spelerId}                         de speler: bedrijf, voornaam, aangemaaktOp (alleen voor het personeel)
+//     spelerId = SHA-256 van bedrijf + "|" + voornaam, beide genormaliseerd (zie spelerIdVan)
 // - games/{automatisch id}                     logboek van elk gespeeld spel: spelerId, score, dag, gespeeldOp
 // - leaderboardAllTime/{spelerId}              enkel wat op het scherm komt: bedrijf, voornaam, score, bijgewerktOp
 // - leaderboardDaily/{dag}/entries/{spelerId}  idem, per dag (YYYY-MM-DD in Europe/Brussels)
 //
-// E-mailadres, telefoonnummer en achternaam komen NOOIT in games of in een leaderboard.
+// Er worden geen contactgegevens bewaard: die hebben we al via een ander systeem.
 // Testdocumenten krijgen het veld test: true, zodat je ze later makkelijk kunt herkennen en wissen.
 //
 // Werkt ook zonder internet: Firestore bewaart schrijfacties lokaal (offline-cache, zie firebase.js)
@@ -16,7 +16,7 @@
 // (dat zou zonder wifi eindeloos duren). We gebruiken bewust geen transacties: die werken niet offline.
 
 import {
-  collection, doc, getDoc, getDocFromCache, setDoc, updateDoc, addDoc,
+  collection, doc, getDoc, getDocFromCache, setDoc, addDoc,
   query, orderBy, limit, where, getDocs, getDocsFromCache, Timestamp,
 } from 'firebase/firestore';
 import { db } from './firebase.js';
@@ -30,12 +30,14 @@ const dagFormaat = new Intl.DateTimeFormat('en-CA', {
 });
 const dagBrussel = (datum) => dagFormaat.format(new Date(datum));
 
-const normaliseerEmail = (email) => String(email ?? '').trim().toLowerCase();
+// Kleine letters, spaties vooraan en achteraan weg, meerdere spaties na elkaar worden één spatie
+const normaliseer = (tekst) => String(tekst ?? '').normalize('NFC').trim().replace(/\s+/g, ' ').toLowerCase();
 
-// Het spelers-id: SHA-256 van het e-mailadres, als 64 hexadecimale tekens
-async function spelerIdVanEmail(email) {
+// Het spelers-id: SHA-256 van bedrijf + "|" + voornaam (genormaliseerd), als 64 hexadecimale tekens.
+// Dezelfde speler (ook met andere hoofdletters of extra spaties) krijgt dus altijd hetzelfde id.
+async function spelerIdVan(bedrijf, voornaam) {
   if (!globalThis.crypto?.subtle) throw new Error('SHA-256 is niet beschikbaar (https of localhost nodig)');
-  const bytes = new TextEncoder().encode(normaliseerEmail(email));
+  const bytes = new TextEncoder().encode(`${normaliseer(bedrijf)}|${normaliseer(voornaam)}`);
   const hash = await globalThis.crypto.subtle.digest('SHA-256', bytes);
   return [...new Uint8Array(hash)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
@@ -119,65 +121,30 @@ function bordRegel(document) {
 // Spelers
 // ---------------------------------------------------------------------------
 
-// gegevens: { voornaam, achternaam, bedrijf, email, telefoon, toestemming, nieuwsbrief, test }
-// - toestemming: mag deelnemen aan de wedstrijd (ja/nee)
-// - nieuwsbrief: mogen we nieuws en aanbiedingen sturen (ja/nee)
+// gegevens: { bedrijf, voornaam, test }
 // - test: true bij testdata
-// Bestaat de speler al (zelfde e-mailadres), dan blijven zijn gegevens ongewijzigd en worden
-// alleen nieuwsbrief en toestemmingTijdstip bijgewerkt. Geeft het spelers-id terug.
+// Bestaat de speler al (zelfde bedrijf en voornaam, genormaliseerd), dan blijft alles zoals de speler het
+// de eerste keer intypte (zo staat hij op het scorebord altijd hetzelfde) en blijft zijn beste score gelden.
+// Geeft { id, bedrijf, voornaam, bestaand } terug, met bedrijf en voornaam zoals bewaard.
 export async function registerPlayer(gegevens) {
-  const voornaam = String(gegevens.voornaam ?? '').trim();
-  const bedrijf = String(gegevens.bedrijf ?? '').trim();
-  const email = normaliseerEmail(gegevens.email);
-  // Voornaam en bedrijf staan op het scorebord, het e-mailadres bepaalt het spelers-id
-  if (!voornaam || !bedrijf || !email) throw new Error('Voornaam, bedrijf en e-mailadres zijn verplicht');
+  const voornaam = String(gegevens.voornaam ?? '').trim().replace(/\s+/g, ' ');
+  const bedrijf = String(gegevens.bedrijf ?? '').trim().replace(/\s+/g, ' ');
+  if (!voornaam || !bedrijf) throw new Error('Bedrijf en voornaam zijn verplicht');
 
-  const id = await spelerIdVanEmail(email);
+  const id = await spelerIdVan(bedrijf, voornaam);
   const ref = doc(db, 'players', id);
-  const nu = Timestamp.now();
 
   const bestaand = await leesDoc(ref); // een get op één document, niet zoeken in de hele collectie
   if (bestaand?.exists()) {
-    verstuur(updateDoc(ref, { nieuwsbrief: gegevens.nieuwsbrief === true, toestemmingTijdstip: nu }));
     onthoud(id, bestaand.data());
-    return id;
+    return { id, ...bekendeSpelers.get(id), bestaand: true };
   }
 
-  const speler = {
-    voornaam,
-    achternaam: String(gegevens.achternaam ?? '').trim(),
-    bedrijf,
-    email,
-    telefoon: String(gegevens.telefoon ?? '').trim(),
-    toestemmingDeelname: gegevens.toestemming === true,
-    nieuwsbrief: gegevens.nieuwsbrief === true,
-    toestemmingTijdstip: nu,
-    aangemaaktOp: nu,
-  };
+  const speler = { bedrijf, voornaam, aangemaaktOp: Timestamp.now() };
   if (gegevens.test === true) speler.test = true;
   verstuur(setDoc(ref, speler));
   onthoud(id, speler);
-  return id;
-}
-
-// Is dit e-mailadres al bekend? Dan geven we { id, voornaam } terug, anders null.
-// (Er komen bewust geen andere persoonsgegevens mee terug.)
-export async function findPlayerByEmail(email) {
-  if (!normaliseerEmail(email)) return null;
-  const id = await spelerIdVanEmail(email);
-  const snap = await leesDoc(doc(db, 'players', id));
-  if (!snap?.exists()) return null;
-  onthoud(id, snap.data());
-  return { id, voornaam: snap.data().voornaam };
-}
-
-// Terugkerende speler: werk alleen de nieuwsbriefkeuze en het tijdstip daarvan bij.
-// De andere gegevens blijven ongewijzigd, zodat de speler onder dezelfde naam op het scorebord blijft.
-export async function updateNewsletterConsent(spelerId, nieuwsbrief) {
-  verstuur(updateDoc(doc(db, 'players', spelerId), {
-    nieuwsbrief: nieuwsbrief === true,
-    toestemmingTijdstip: Timestamp.now(),
-  }));
+  return { id, bedrijf, voornaam, bestaand: false };
 }
 
 // ---------------------------------------------------------------------------
