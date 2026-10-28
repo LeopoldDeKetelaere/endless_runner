@@ -19,6 +19,15 @@ function zetHitbox(object, hb) {
   object.body.setOffset(b / 2 + hb.x * b - hitBreedte / 2, h / 2 + hb.y * h - hitHoogte / 2);
 }
 
+// Zoals zetHitbox, maar een cirkel: straal als fractie van de breedte, x en y als verschuiving van het midden
+// (fractie van breedte en hoogte van het object).
+function zetCirkelHitbox(object, hb) {
+  const b = object.displayWidth;
+  const h = object.displayHeight;
+  const straal = hb.straal * b;
+  object.body.setCircle(straal, b / 2 + hb.x * b - straal, h / 2 + hb.y * h - straal);
+}
+
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
@@ -53,6 +62,9 @@ export default class GameScene extends Phaser.Scene {
     // Hindernissen (rotsen, boten, octopussen en vissen)
     this.hindernissen = this.add.group();
     this.physics.add.overlap(this.duiker, this.hindernissen, () => this.geraakt());
+    // De octopus-afbeeldingen volgen hun (onzichtbare) hitbox-object, pas nadat de physics bewogen heeft
+    this.events.on('postupdate', this.updateOctopusBeelden, this);
+    this.events.once('shutdown', () => this.events.off('postupdate', this.updateOctopusBeelden, this));
 
     // Besturing
     this.pijlen = this.input.keyboard.createCursorKeys();
@@ -211,7 +223,8 @@ export default class GameScene extends Phaser.Scene {
     g.clear();
     const kader = (body, kleur) => {
       g.lineStyle(px(1.5), kleur, 1);
-      g.strokeRect(body.x, body.y, body.width, body.height);
+      if (body.isCircle) g.strokeCircle(body.center.x, body.center.y, body.halfWidth);
+      else g.strokeRect(body.x, body.y, body.width, body.height);
     };
     if (this.duikerBeeld) {
       const b = this.duikerBeeld;
@@ -219,7 +232,13 @@ export default class GameScene extends Phaser.Scene {
       g.strokeRect(b.x - b.displayWidth / 2, b.y - b.displayHeight / 2, b.displayWidth, b.displayHeight);
     }
     kader(this.duiker.body, DEBUG_KLEUREN.duiker);
-    for (const h of this.hindernissen.getChildren()) kader(h.body, DEBUG_KLEUREN[h.hindernisType]);
+    for (const h of this.hindernissen.getChildren()) {
+      if (h.beeld) { // de zichtbare octopus (grijs), waarmee de doorgang rekent
+        g.lineStyle(px(0.7), 0x888888, 1);
+        g.strokeRect(h.x - h.displayWidth / 2, h.y - h.displayHeight / 2, h.displayWidth, h.displayHeight);
+      }
+      kader(h.body, DEBUG_KLEUREN[h.hindernisType]);
+    }
   }
 
   update(tijd, delta) {
@@ -399,8 +418,41 @@ export default class GameScene extends Phaser.Scene {
       h.hindernisType = item.type; // 'rots', 'boot', 'octopus' of 'vis'
       this.physics.add.existing(h);
       h.body.setAllowGravity(false);
-      zetHitbox(h, CONFIG.hitbox[item.type]);
+      if (item.type === 'octopus') this.maakOctopusBeeld(h);
+      else zetHitbox(h, CONFIG.hitbox[item.type]);
       this.hindernissen.add(h);
+    }
+  }
+
+  // De octopus bestaat uit twee delen (net als de duiker):
+  // - h: een onzichtbaar object ter grootte van de octopus met de cirkel-hitbox. Dat dobbert en botst.
+  // - h.beeld: de afbeelding erover, die pompt en wiegt. Ontbreekt de afbeelding, dan blijft het paarse blokje.
+  maakOctopusBeeld(h) {
+    if (!this.textures.exists('octopus')) {
+      zetHitbox(h, { breedte: 1, hoogte: 1, x: 0, y: 0 });
+      return;
+    }
+    zetCirkelHitbox(h, CONFIG.hitbox.octopus);
+    h.setVisible(false);
+    // Hij kijkt in de tekening al naar links, naar de duiker toe: nooit spiegelen
+    h.beeld = this.add.sprite(h.x, h.y, 'octopus').setDepth(1);
+    h.beeld.setDisplaySize(h.displayWidth, h.displayHeight);
+    h.basisSchaalX = h.beeld.scaleX;
+    h.basisSchaalY = h.beeld.scaleY;
+    h.pompFase = Math.random() * Math.PI * 2;
+    h.wiegFase = Math.random() * Math.PI * 2;
+    h.once('destroy', () => h.beeld.destroy());
+  }
+
+  // Pompen (kort samentrekken en uitrekken) en zachtjes wiegen, zonder extra beeldjes
+  updateOctopusBeelden() {
+    for (const h of this.hindernissen.getChildren()) {
+      if (!h.beeld) continue;
+      const pomp = Math.sin((h.leeftijd / CONFIG.octopusPompPeriode) * Math.PI * 2 + h.pompFase) * CONFIG.octopusPomp;
+      const wieg = Math.sin((h.leeftijd / CONFIG.octopusWiegPeriode) * Math.PI * 2 + h.wiegFase) * CONFIG.octopusWiegHoek;
+      h.beeld.setPosition(h.x, h.y);
+      h.beeld.setScale(h.basisSchaalX * (1 + pomp), h.basisSchaalY * (1 - pomp)); // breder en lager, dan smaller en hoger
+      h.beeld.setAngle(wieg);
     }
   }
 

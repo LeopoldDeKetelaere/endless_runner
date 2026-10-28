@@ -22,6 +22,8 @@ export const AFBEELDINGEN = [
   { sleutel: 'duiker', bestand: 'duiker.png' },              // de duiker in het spel
   { sleutel: 'duiker_groot', bestand: 'duiker_groot.png' },  // de grote duiker op het startscherm
   // Beide worden gemaakt met:  npm run duiker  (uit assets-bron/duiker.png)
+  { sleutel: 'octopus', bestand: 'octopus.png' },            // de octopus (alleen als hindernis in het spel)
+  // De octopus wordt gemaakt met:  npm run octopus  (uit assets-bron/octopus.png)
 ];
 
 export const GELUIDEN = [

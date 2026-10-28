@@ -62,12 +62,25 @@ function hitboxBreedte(type, breedte, metVerschuiving = true) {
   return h.breedte * breedte + (metVerschuiving ? 2 * Math.abs(h.x * breedte) : 0);
 }
 
+// De octopus telt voor de doorgang met zijn hele zichtbare afmeting (ook de tentakels), niet met de
+// cirkel-hitbox, zodat een doorgang er nooit afgesloten uitziet. We rekenen ook de pompbeweging
+// en de wieghoek mee. breedte en hoogte zijn die van de octopus zelf (zonder pomp en wieg).
+function octopusZichtbaar(breedte, hoogte) {
+  const b = breedte * (1 + CONFIG.octopusPomp);
+  const h = hoogte * (1 + CONFIG.octopusPomp);
+  const hoek = (CONFIG.octopusWiegHoek * Math.PI) / 180;
+  return {
+    breedte: b * Math.cos(hoek) + h * Math.sin(hoek),
+    hoogte: h * Math.cos(hoek) + b * Math.sin(hoek),
+  };
+}
+
 // Hoeveel pixels de duiker verticaal kan verschuiven tussen twee kolommen
 function maxVerschuiving(snelheid) {
   const breedsteHindernis = Math.max(
     hitboxBreedte('rots', CONFIG.rotsBreedte),
     hitboxBreedte('boot', CONFIG.bootBreedte),
-    hitboxBreedte('octopus', CONFIG.octopusBreedte),
+    octopusZichtbaar(CONFIG.octopusBreedte * CONFIG.octopusGrootte[1], CONFIG.octopusBreedte * CONFIG.octopusGrootte[1] * CONFIG.octopusVerhouding).breedte,
   );
   const vrijeAfstand = kolomAfstand() - breedsteHindernis - hitboxBreedte('duiker', CONFIG.duikerBreedte, false);
   const tijd = Math.max(vrijeAfstand, 0) / snelheid;
@@ -119,6 +132,10 @@ function hitboxVerticaal(type, y, hoogte) {
 
 // Gebied (boven, onder) dat een item inneemt (de hitbox), inclusief dobberen
 function gebied(item) {
+  if (item.type === 'octopus') {
+    const halfHoogte = octopusZichtbaar(item.breedte, item.hoogte).hoogte / 2;
+    return [item.y - halfHoogte - item.amp, item.y + halfHoogte + item.amp];
+  }
   const [boven, onder] = hitboxVerticaal(item.type, item.y, item.hoogte);
   return [boven - item.amp, onder + item.amp];
 }
@@ -200,13 +217,16 @@ export function maakKolom(toestand, snelheid) {
     for (let n = 0; n < aantal; n++) {
       let dier;
       if (eersteIsAanDeBeurt(octopusMinVis)) {
-        const hoogte = rand(CONFIG.octopusMinHoogte, CONFIG.octopusMaxHoogte);
+        // Elke octopus heeft een eigen grootte; de hoogte volgt uit de verhouding van de afbeelding
+        const breedte = CONFIG.octopusBreedte * rand(...CONFIG.octopusGrootte);
+        const hoogte = breedte * CONFIG.octopusVerhouding;
+        const halfZichtbaar = octopusZichtbaar(breedte, hoogte).hoogte / 2;
         const amp = CONFIG.dobberHoogte;
         const fase = rand(0, Math.PI * 2);
         // Het hele dobbergebied moet binnen het scherm blijven
         dier = plaatsDier(
-          (y) => ({ type: 'octopus', breedte: CONFIG.octopusBreedte, hoogte, y, amp, periode: CONFIG.dobberPeriode, fase, kleur: CONFIG.octopusKleur }),
-          [amp + hoogte / 2, HOOGTE - amp - hoogte / 2], verbodenKolom, dieren, toestand.banen.octopus
+          (y) => ({ type: 'octopus', breedte, hoogte, y, amp, periode: CONFIG.dobberPeriode, fase, kleur: CONFIG.octopusKleur }),
+          [amp + halfZichtbaar, HOOGTE - amp - halfZichtbaar], verbodenKolom, dieren, toestand.banen.octopus
         );
         if (dier) octopusMinVis++;
       } else {

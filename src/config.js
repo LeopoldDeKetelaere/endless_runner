@@ -108,13 +108,19 @@ export const CONFIG = {
   bootMinHoogte: 120,
   bootKleur: 0x8b5a2b,
 
-  // Octopus: beweegt mee met de achtergrond en dobbert op en neer
-  octopusBreedte: 105.6,
-  octopusMinHoogte: 86.4,
-  octopusMaxHoogte: 134.4,
-  octopusKleur: 0x9b4dca,
+  // Octopus: beweegt mee met de achtergrond en dobbert op en neer.
+  // De afbeelding (octopus.png) wordt gemaakt met: npm run octopus (uit assets-bron/octopus.png).
+  octopusBreedte: 200,      // breedte van een gemiddelde octopus (pixels); zet dezelfde waarde in scripts/maak-octopus.mjs
+  octopusVerhouding: 0.845, // hoogte / breedte van de afbeelding (het script meldt dit getal)
+  octopusKleur: 0x9b4dca,   // blokje dat getoond wordt als de afbeelding ontbreekt
+  octopusGrootte: [0.9, 1.1],  // willekeurige grootte per octopus (90% tot 110%)
   dobberHoogte: 72,         // hoeveel pixels omhoog én omlaag
   dobberPeriode: 2500,      // ms voor één volledige golf
+  // Levendig, zonder extra beeldjes
+  octopusPomp: 0.05,        // pompbeweging: zoveel (0.05 = 5%) breder en lager, dan smaller en hoger
+  octopusPompPeriode: 1400, // ms voor één pomp
+  octopusWiegHoek: 3,       // wiegbeweging: zoveel graden naar links en naar rechts
+  octopusWiegPeriode: 3800, // ms voor één wieg
 
   // Vis: zwemt in een rechte lijn, sneller dan de achtergrond
   visBreedte: 134.4,
@@ -138,7 +144,11 @@ export const CONFIG = {
     duiker: { breedte: 0.38, hoogte: 0.69, x: 0.19, y: -0.12 },
     rots: { breedte: 1, hoogte: 1, x: 0, y: 0 },
     boot: { breedte: 1, hoogte: 1, x: 0, y: 0 },
-    octopus: { breedte: 1, hoogte: 1, x: 0, y: 0 },
+    // De octopus heeft een CIRKEL rond de kop en het midden van het lichaam; de tentakels tellen niet mee.
+    //   straal: als fractie van de breedte van de octopus; x: als fractie van de breedte, y: als fractie van de hoogte
+    //   (verschuiving van het midden van de cirkel ten opzichte van het midden van de afbeelding).
+    // Hij schaalt mee met de grootte van de octopus. Voor de doorgang telt de hele zichtbare octopus (met tentakels).
+    octopus: { straal: 0.25, x: 0.085, y: -0.14 },
     vis: { breedte: 1, hoogte: 1, x: 0, y: 0 },
   },
 
