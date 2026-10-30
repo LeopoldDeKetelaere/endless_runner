@@ -176,7 +176,7 @@ export const CONFIG = {
     verloopBoven: 0x3b78b8, verloopBovenAlpha: 0.4,
     verloopOnder: 0x061838, verloopOnderAlpha: 0.72,
     // Menuschermen (start, inloggen, registratie, game over): stilstaand of heel traag
-    menuSnelheid: 10,       // pixels per seconde (0 = stilstaand)
+    menuSnelheid: 20,       // pixels per seconde (0 = stilstaand)
     menuVeilAlpha: 0.35,    // donker, half doorzichtig vlak over de achtergrond, voor leesbare tekst (0 = geen)
   },
 
