@@ -96,9 +96,6 @@ export const CONFIG = {
   // Kans per kolom dat hij een nieuw doel kiest (hoger = onrustiger)
   doorgangNieuwDoel: 0.25,
 
-  // Rotsen en boten nemen maximaal zoveel van de schermhoogte in (0.2 = 20%)
-  maxRandHoogteFractie: 0.2,
-
   // Rotsen: staan op de onderrand van het scherm. De afbeelding (rots.png) wordt gemaakt met: npm run rots
   // (uit assets-bron/rots.png). Een rots wordt altijd IN VERHOUDING geschaald: de breedte volgt uit de hoogte.
   rotsMinHoogte: 144,       // hoogte (de piek) van de kleinste rots, in pixels
@@ -107,10 +104,24 @@ export const CONFIG = {
   rotsSpiegelKans: 0.5,     // kans dat een rots horizontaal gespiegeld wordt
   rotsKleur: 0x808890,      // blok dat getoond wordt als de afbeelding ontbreekt
 
-  // Boten: hangen naar beneden vanaf de bovenkant
-  bootBreedte: 216,
-  bootMinHoogte: 120,
-  bootKleur: 0x8b5a2b,
+  // Boten: hangen naar beneden vanaf de bovenkant, alsof ze op het wateroppervlak drijven. De afbeelding (boot.png)
+  // wordt gemaakt met: npm run boot (uit assets-bron/boot-klaar.png). Een boot wordt altijd IN VERHOUDING geschaald:
+  // de breedte volgt uit de hoogte. De rechte bovenrand van de afbeelding ligt altijd tegen of net boven de
+  // bovenrand van het scherm, nooit eronder (er is nooit een kier).
+  // LET OP: de boot is veel breder dan hoog (verhouding 0,272). Hoe groter de boot, hoe breder, en hoe minder ruimte
+  // er tussen twee kolommen overblijft voor de doorgang om te verschuiven. Hou de breedte (hoogte / verhouding)
+  // dus beperkt.
+  bootMinHoogte: 90,        // hoogte van de kleinste boot (de hele afbeelding, ook het deel boven het scherm), pixels
+  bootMaxHoogte: 130,       // hoogte van de grootste boot; zet dezelfde waarde in scripts/maak-boot.mjs (HOOGTE_SPEL)
+  bootVerhouding: 0.272,    // hoogte / breedte van de afbeelding (het script meldt dit getal)
+  bootOmhoog: [14, 30],     // hoeveel pixels de boot boven het scherm uitsteekt (willekeurig tussen deze twee). Het minimum
+                            // wordt automatisch minstens de deining + kanteling, zodat de bovenrand altijd bedekt blijft.
+  bootSpiegelKans: 0.5,     // kans dat een boot horizontaal gespiegeld wordt
+  // Deining op de golven (alleen op het zichtbare beeld, niet op het lichaam met de hitbox)
+  bootDeinHoogte: 4,        // pixels op en neer
+  bootDeinPeriode: 4200,    // ms voor één deining
+  bootKantelHoek: 1,        // graden naar links en rechts (hooguit 1)
+  bootKleur: 0x8b5a2b,      // blok dat getoond wordt als de afbeelding ontbreekt
 
   // Octopus: beweegt mee met de achtergrond en dobbert op en neer.
   // De afbeelding (octopus.png) wordt gemaakt met: npm run octopus (uit assets-bron/octopus.png).
@@ -161,7 +172,15 @@ export const CONFIG = {
       { van: 0.06, tot: 0.62, hoogte: 0.55 }, // het brede middenstuk
       { van: 0.64, tot: 0.88, hoogte: 0.30 }, // de lage uitloper rechts
     ],
-    boot: { breedte: 1, hoogte: 1, x: 0, y: 0 },
+    // De boot: twee rechthoeken, een beetje binnen de contour. Ze hangen aan de bovenkant van de afbeelding:
+    //   van, tot: begin en einde als fractie van de breedte van de boot, gemeten van links (0 = links, 1 = rechts)
+    //   hoogte:   hoe diep, als fractie van de hoogte van de afbeelding, gemeten van boven (1 = tot de onderkant)
+    // Ze schalen mee met de grootte en spiegelen mee als de boot gespiegeld is. Het roer links telt niet mee.
+    // Voor de doorgang telt het diepste zichtbare punt van de boot (de onderkant van de kiel), niet deze rechthoeken.
+    boot: [
+      { van: 0.13, tot: 0.85, hoogte: 0.53 }, // de romp
+      { van: 0.48, tot: 0.555, hoogte: 0.90 }, // de kiel: het smalle, diepe stuk in het midden
+    ],
     // De octopus heeft een CIRKEL rond de kop en het midden van het lichaam; de tentakels tellen niet mee.
     //   straal: als fractie van de breedte van de octopus; x: als fractie van de breedte, y: als fractie van de hoogte
     //   (verschuiving van het midden van de cirkel ten opzichte van het midden van de afbeelding).

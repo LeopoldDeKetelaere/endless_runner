@@ -47,8 +47,12 @@ const klem = (x, min, max) => Math.min(Math.max(x, min), max);
 
 const halveOpening = () => CONFIG.minimaleOpening / 2;
 
-// Rotsen en boten zijn nooit hoger dan dit deel van het scherm
-const maxRandHoogte = () => HOOGTE * CONFIG.maxRandHoogteFractie;
+// De deining en kanteling van de boot: zoveel pixels kan de bovenrand van de afbeelding zakken. Daarom steekt de
+// boot minstens zoveel boven het scherm uit, en rekenen we er ook mee bij de diepte voor de doorgang.
+function bootMarge() {
+  const halveBreedte = CONFIG.bootMaxHoogte / CONFIG.bootVerhouding / 2;
+  return CONFIG.bootDeinHoogte + Math.sin((CONFIG.bootKantelHoek * Math.PI) / 180) * halveBreedte + 1;
+}
 
 // Afstand (pixels) tussen twee kolommen
 const kolomAfstand = () => (CONFIG.hindernisInterval / 1000) * CONFIG.startSnelheid;
@@ -80,7 +84,7 @@ function zichtbaar(type, breedte, hoogte) {
 function maxVerschuiving(snelheid) {
   const breedsteHindernis = Math.max(
     CONFIG.rotsMaxHoogte / CONFIG.rotsVerhouding, // de breedste rots (de piek telt, niet de hitbox)
-    hitboxBreedte('boot', CONFIG.bootBreedte),
+    CONFIG.bootMaxHoogte / CONFIG.bootVerhouding, // de breedste boot (het diepste punt telt, niet de hitbox)
     zichtbaar('octopus', CONFIG.octopusBreedte * CONFIG.octopusGrootte[1], CONFIG.octopusBreedte * CONFIG.octopusGrootte[1] * CONFIG.octopusVerhouding).breedte,
   );
   const vrijeAfstand = kolomAfstand() - breedsteHindernis - hitboxBreedte('duiker', CONFIG.duikerBreedte, false);
@@ -142,11 +146,8 @@ function gebied(item) {
   return [boven - item.amp, onder + item.amp];
 }
 
-// Een boot hangt aan de bovenkant: de onderkant van zijn hitbox ligt op hoogte * factor.
-// Zonder aanpassing van de hitbox is de factor 1 (de hitbox is het hele object).
 // Een rots staat tegen de onderkant en telt voor de doorgang met zijn hoogste zichtbare punt (de piek):
 // de factor is altijd 1, ongeacht de hitboxen van de rots.
-const bootFactor = () => 0.5 + CONFIG.hitbox.boot.y + CONFIG.hitbox.boot.hoogte / 2;
 
 // Zet een dier neer dat 'verboden' gebieden vermijdt. We proberen eerst de baan van het
 // scherm waar van deze soort tot nu toe het minste zaten, en zo verder. Zo komen de dieren
@@ -201,11 +202,17 @@ export function maakKolom(toestand, snelheid) {
           rotsMinBoot++;
         }
       } else {
-        // Boot: vanaf de bovenkant
-        const maxHoogte = Math.min(maxRandHoogte(), bootFactor() > 0 ? doorgangBoven / bootFactor() : Infinity);
+        // Boot: de bovenrand ligt tegen (of net boven) de bovenrand van het scherm. Het diepste zichtbare punt
+        // (de onderkant van de kiel, plus de deining) mag de doorgang niet raken. De breedte volgt uit de hoogte.
+        const marge = bootMarge();
+        const omhoog = rand(Math.min(Math.max(CONFIG.bootOmhoog[0], marge), CONFIG.bootOmhoog[1]), CONFIG.bootOmhoog[1]);
+        const maxHoogte = Math.min(CONFIG.bootMaxHoogte, doorgangBoven + omhoog - marge);
         if (maxHoogte >= CONFIG.bootMinHoogte) {
           const hoogte = rand(CONFIG.bootMinHoogte, maxHoogte);
-          items.push({ type: 'boot', breedte: CONFIG.bootBreedte, hoogte, y: hoogte / 2, amp: 0, kleur: CONFIG.bootKleur });
+          items.push({
+            type: 'boot', breedte: hoogte / CONFIG.bootVerhouding, hoogte, omhoog, y: hoogte / 2 - omhoog, amp: 0,
+            spiegel: Math.random() < CONFIG.bootSpiegelKans, kleur: CONFIG.bootKleur,
+          });
           rotsMinBoot--;
         }
       }
