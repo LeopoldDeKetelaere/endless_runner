@@ -124,10 +124,13 @@ export const CONFIG = {
   octopusWiegPeriode: 3800, // ms voor één wieg
 
   // Vis: zwemt in een rechte lijn, sneller dan de achtergrond
-  visBreedte: 134.4,
-  visMinHoogte: 48,
-  visMaxHoogte: 76.8,
-  visKleur: 0xff8c1a,
+  // De afbeelding (vis.png) wordt gemaakt met: npm run vis (uit assets-bron/vis.png).
+  visBreedte: 220,          // breedte van een gemiddelde vis (pixels); zet dezelfde waarde in scripts/maak-vis.mjs
+  visVerhouding: 0.282,     // hoogte / breedte van de afbeelding (het script meldt dit getal)
+  visKleur: 0xff8c1a,       // blokje dat getoond wordt als de afbeelding ontbreekt
+  visGrootte: [0.9, 1.1],   // willekeurige grootte per vis (90% tot 110%)
+  visWiegHoek: 4,           // lichte, snelle golfbeweging: zoveel graden naar links en rechts
+  visWiegPeriode: 450,      // ms voor één wieg
   visSnelheidFactor: 1.6,   // 1.6 = 60% sneller dan de achtergrond
 
   // Hitboxen: het deel van een afbeelding dat telt bij een botsing. Los van het uiterlijk, zodat
@@ -150,7 +153,9 @@ export const CONFIG = {
     //   (verschuiving van het midden van de cirkel ten opzichte van het midden van de afbeelding).
     // Hij schaalt mee met de grootte van de octopus. Voor de doorgang telt de hele zichtbare octopus (met tentakels).
     octopus: { straal: 0.25, x: 0.085, y: -0.14 },
-    vis: { breedte: 1, hoogte: 1, x: 0, y: 0 },
+    // De vis: een rechthoek rond kop en lichaam; de dunne staart en de vinnen tellen niet mee.
+    // Hij schaalt mee met de grootte van de vis. Voor de doorgang telt de hele zichtbare vis.
+    vis: { breedte: 0.52, hoogte: 0.8, x: -0.238, y: 0.03 },
   },
 
   // Score: pixels afgelegd per scorepunt (meter)

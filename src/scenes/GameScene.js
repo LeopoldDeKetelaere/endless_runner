@@ -61,13 +61,13 @@ export default class GameScene extends Phaser.Scene {
     // Hindernissen (rotsen, boten, octopussen en vissen)
     this.hindernissen = this.add.group();
     this.physics.add.overlap(this.duiker, this.hindernissen, () => this.geraakt());
-    // De octopus-afbeeldingen volgen hun (onzichtbare) hitbox-object, pas nadat de physics bewogen heeft
-    this.events.on('postupdate', this.updateOctopusBeelden, this);
-    // De octopussen bewegen we zelf, aan het begin van elke frame (voor de physics), zie beweegOctopussen
-    this.events.on('preupdate', this.beweegOctopussen, this);
+    // De afbeeldingen van octopussen en vissen volgen hun (onzichtbare) hitbox-object, pas nadat de physics bewogen heeft
+    this.events.on('postupdate', this.updateDierBeelden, this);
+    // Octopussen en vissen bewegen we zelf, aan het begin van elke frame (voor de physics), zie beweegDieren
+    this.events.on('preupdate', this.beweegDieren, this);
     this.events.once('shutdown', () => {
-      this.events.off('postupdate', this.updateOctopusBeelden, this);
-      this.events.off('preupdate', this.beweegOctopussen, this);
+      this.events.off('postupdate', this.updateDierBeelden, this);
+      this.events.off('preupdate', this.beweegDieren, this);
     });
 
     // Besturing
@@ -237,7 +237,7 @@ export default class GameScene extends Phaser.Scene {
     }
     kader(this.duiker.body, DEBUG_KLEUREN.duiker);
     for (const h of this.hindernissen.getChildren()) {
-      if (h.beeld) { // de zichtbare octopus (grijs), waarmee de doorgang rekent
+      if (h.beeld) { // het zichtbare dier (grijs), waarmee de doorgang rekent
         g.lineStyle(px(0.7), 0x888888, 1);
         g.strokeRect(h.x - h.displayWidth / 2, h.y - h.displayHeight / 2, h.displayWidth, h.displayHeight);
       }
@@ -389,26 +389,26 @@ export default class GameScene extends Phaser.Scene {
     }
 
     for (const h of this.hindernissen.getChildren().slice()) {
-      // Vissen zwemmen sneller dan de achtergrond, de rest beweegt mee (octopussen: zie beweegOctopussen)
-      if (h.hindernisType !== 'octopus') h.body.setVelocityX(-this.snelheid * h.snelheidFactor);
+      // Rotsen en boten bewegen mee met de achtergrond (octopussen en vissen: zie beweegDieren)
+      if (h.hindernisType !== 'octopus' && h.hindernisType !== 'vis') h.body.setVelocityX(-this.snelheid * h.snelheidFactor);
 
       if (h.x + h.width / 2 < 0) h.destroy(); // uit beeld
     }
   }
 
-  // Octopussen bewegen we zelf, en alleen hier: elke frame, op basis van de verstreken tijd, naar links met
-  // de snelheid van de wereld en dobberend als een golf rond hun basishoogte. Dit gebeurt vóór de physics
-  // van die frame, zodat het (onzichtbare) lichaam met de hitbox precies meebeweegt. Via de physics-snelheid
-  // ging het schokkerig: de physics rekent in vaste stapjes van 1/60 s, los van de frames, en de dobberbeweging
-  // werd telkens opnieuw bijgestuurd. De pomp- en wiegbeweging staan in updateOctopusBeelden en raken het lichaam niet.
-  beweegOctopussen(tijd, delta) {
+  // Octopussen en vissen bewegen we zelf, en alleen hier: elke frame, op basis van de verstreken tijd, naar links
+  // (met de snelheid van de wereld, bij vissen sneller) en bij octopussen dobberend als een golf rond hun
+  // basishoogte. Dit gebeurt vóór de physics van die frame, zodat het (onzichtbare) lichaam met de hitbox precies
+  // meebeweegt. Via de physics-snelheid ging het schokkerig: de physics rekent in vaste stapjes van 1/60 s, los van
+  // de frames. De pomp-, wieg- en groottebeweging staan in updateDierBeelden en raken het lichaam niet.
+  beweegDieren(tijd, delta) {
     if (this.isKlaar || this.fase !== 'spelen') return;
     const dt = Math.min(delta, 100) / 1000;
     for (const h of this.hindernissen.getChildren()) {
-      if (h.hindernisType !== 'octopus') continue;
+      if (h.hindernisType !== 'octopus' && h.hindernisType !== 'vis') continue;
       h.leeftijd += dt * 1000;
       h.x -= this.snelheid * h.snelheidFactor * dt;
-      h.y = h.basisY + h.amp * Math.sin((2 * Math.PI * h.leeftijd) / h.periode + h.fase);
+      if (h.amp > 0) h.y = h.basisY + h.amp * Math.sin((2 * Math.PI * h.leeftijd) / h.periode + h.fase); // vissen zwemmen recht
     }
   }
 
@@ -432,24 +432,26 @@ export default class GameScene extends Phaser.Scene {
       h.hindernisType = item.type; // 'rots', 'boot', 'octopus' of 'vis'
       this.physics.add.existing(h);
       h.body.setAllowGravity(false);
-      if (item.type === 'octopus') this.maakOctopusBeeld(h);
+      if (item.type === 'octopus') this.maakDierBeeld(h, 'octopus');
+      else if (item.type === 'vis') this.maakDierBeeld(h, 'vis');
       else zetHitbox(h, CONFIG.hitbox[item.type]);
       this.hindernissen.add(h);
     }
   }
 
-  // De octopus bestaat uit twee delen (net als de duiker):
-  // - h: een onzichtbaar object ter grootte van de octopus met de cirkel-hitbox. Dat dobbert en botst.
-  // - h.beeld: de afbeelding erover, die pompt en wiegt. Ontbreekt de afbeelding, dan blijft het paarse blokje.
-  maakOctopusBeeld(h) {
-    if (!this.textures.exists('octopus')) {
+  // Een octopus of vis bestaat uit twee delen (net als de duiker):
+  // - h: een onzichtbaar object ter grootte van het dier met de hitbox (octopus: cirkel, vis: rechthoek). Dat beweegt en botst.
+  // - h.beeld: de afbeelding erover (octopus pompt en wiegt, vis wiegt). Ontbreekt de afbeelding, dan blijft het gekleurde blokje.
+  maakDierBeeld(h, soort) {
+    if (!this.textures.exists(soort)) {
       zetHitbox(h, { breedte: 1, hoogte: 1, x: 0, y: 0 });
       return;
     }
-    zetCirkelHitbox(h, CONFIG.hitbox.octopus);
+    if (soort === 'octopus') zetCirkelHitbox(h, CONFIG.hitbox.octopus);
+    else zetHitbox(h, CONFIG.hitbox[soort]);
     h.setVisible(false);
-    // Hij kijkt in de tekening al naar links, naar de duiker toe: nooit spiegelen
-    h.beeld = this.add.sprite(h.x, h.y, 'octopus').setDepth(1);
+    // Ze kijken in de tekening al naar links, naar de duiker toe: nooit spiegelen
+    h.beeld = this.add.sprite(h.x, h.y, soort).setDepth(1);
     h.beeld.setDisplaySize(h.displayWidth, h.displayHeight);
     h.basisSchaalX = h.beeld.scaleX;
     h.basisSchaalY = h.beeld.scaleY;
@@ -458,15 +460,20 @@ export default class GameScene extends Phaser.Scene {
     h.once('destroy', () => h.beeld.destroy());
   }
 
-  // Pompen (kort samentrekken en uitrekken) en zachtjes wiegen, zonder extra beeldjes
-  updateOctopusBeelden() {
+  // Octopus: pompen (kort samentrekken en uitrekken) en zachtjes wiegen. Vis: snel een paar graden wiegen.
+  // Alleen op het beeld, zonder extra beeldjes.
+  updateDierBeelden() {
     for (const h of this.hindernissen.getChildren()) {
       if (!h.beeld) continue;
-      const pomp = Math.sin((h.leeftijd / CONFIG.octopusPompPeriode) * Math.PI * 2 + h.pompFase) * CONFIG.octopusPomp;
-      const wieg = Math.sin((h.leeftijd / CONFIG.octopusWiegPeriode) * Math.PI * 2 + h.wiegFase) * CONFIG.octopusWiegHoek;
       h.beeld.setPosition(h.x, h.y);
-      h.beeld.setScale(h.basisSchaalX * (1 + pomp), h.basisSchaalY * (1 - pomp)); // breder en lager, dan smaller en hoger
-      h.beeld.setAngle(wieg);
+      if (h.hindernisType === 'octopus') {
+        const pomp = Math.sin((h.leeftijd / CONFIG.octopusPompPeriode) * Math.PI * 2 + h.pompFase) * CONFIG.octopusPomp;
+        const wieg = Math.sin((h.leeftijd / CONFIG.octopusWiegPeriode) * Math.PI * 2 + h.wiegFase) * CONFIG.octopusWiegHoek;
+        h.beeld.setScale(h.basisSchaalX * (1 + pomp), h.basisSchaalY * (1 - pomp)); // breder en lager, dan smaller en hoger
+        h.beeld.setAngle(wieg);
+      } else {
+        h.beeld.setAngle(Math.sin((h.leeftijd / CONFIG.visWiegPeriode) * Math.PI * 2 + h.wiegFase) * CONFIG.visWiegHoek);
+      }
     }
   }
 

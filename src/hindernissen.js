@@ -62,13 +62,14 @@ function hitboxBreedte(type, breedte, metVerschuiving = true) {
   return h.breedte * breedte + (metVerschuiving ? 2 * Math.abs(h.x * breedte) : 0);
 }
 
-// De octopus telt voor de doorgang met zijn hele zichtbare afmeting (ook de tentakels), niet met de
-// cirkel-hitbox, zodat een doorgang er nooit afgesloten uitziet. We rekenen ook de pompbeweging
-// en de wieghoek mee. breedte en hoogte zijn die van de octopus zelf (zonder pomp en wieg).
-function octopusZichtbaar(breedte, hoogte) {
-  const b = breedte * (1 + CONFIG.octopusPomp);
-  const h = hoogte * (1 + CONFIG.octopusPomp);
-  const hoek = (CONFIG.octopusWiegHoek * Math.PI) / 180;
+// De octopus en de vis tellen voor de doorgang met hun hele zichtbare afmeting (ook tentakels, staart en
+// vinnen), niet met de kleinere hitbox, zodat een doorgang er nooit afgesloten uitziet. We rekenen ook de
+// pompbeweging (octopus) en de wieghoek mee. breedte en hoogte zijn die van het dier zelf (zonder pomp en wieg).
+function zichtbaar(type, breedte, hoogte) {
+  const pomp = type === 'octopus' ? CONFIG.octopusPomp : 0;
+  const b = breedte * (1 + pomp);
+  const h = hoogte * (1 + pomp);
+  const hoek = ((type === 'octopus' ? CONFIG.octopusWiegHoek : CONFIG.visWiegHoek) * Math.PI) / 180;
   return {
     breedte: b * Math.cos(hoek) + h * Math.sin(hoek),
     hoogte: h * Math.cos(hoek) + b * Math.sin(hoek),
@@ -80,7 +81,7 @@ function maxVerschuiving(snelheid) {
   const breedsteHindernis = Math.max(
     hitboxBreedte('rots', CONFIG.rotsBreedte),
     hitboxBreedte('boot', CONFIG.bootBreedte),
-    octopusZichtbaar(CONFIG.octopusBreedte * CONFIG.octopusGrootte[1], CONFIG.octopusBreedte * CONFIG.octopusGrootte[1] * CONFIG.octopusVerhouding).breedte,
+    zichtbaar('octopus', CONFIG.octopusBreedte * CONFIG.octopusGrootte[1], CONFIG.octopusBreedte * CONFIG.octopusGrootte[1] * CONFIG.octopusVerhouding).breedte,
   );
   const vrijeAfstand = kolomAfstand() - breedsteHindernis - hitboxBreedte('duiker', CONFIG.duikerBreedte, false);
   const tijd = Math.max(vrijeAfstand, 0) / snelheid;
@@ -92,7 +93,8 @@ function aantalKolommenVoorVis() {
   const f = CONFIG.visSnelheidFactor;
   if (f <= 1) return 1;
   // Tijdens zijn tocht over het scherm haalt de vis (f - 1)/f * (afstand) in op de achtergrond
-  const ingehaald = (BREEDTE + CONFIG.visBreedte) * (f - 1) / f;
+  const grootsteVis = zichtbaar('vis', CONFIG.visBreedte * CONFIG.visGrootte[1], CONFIG.visBreedte * CONFIG.visGrootte[1] * CONFIG.visVerhouding).breedte;
+  const ingehaald = (BREEDTE + grootsteVis) * (f - 1) / f;
   return Math.ceil(ingehaald / kolomAfstand()) + 1;
 }
 
@@ -132,8 +134,8 @@ function hitboxVerticaal(type, y, hoogte) {
 
 // Gebied (boven, onder) dat een item inneemt (de hitbox), inclusief dobberen
 function gebied(item) {
-  if (item.type === 'octopus') {
-    const halfHoogte = octopusZichtbaar(item.breedte, item.hoogte).hoogte / 2;
+  if (item.type === 'octopus' || item.type === 'vis') {
+    const halfHoogte = zichtbaar(item.type, item.breedte, item.hoogte).hoogte / 2;
     return [item.y - halfHoogte - item.amp, item.y + halfHoogte + item.amp];
   }
   const [boven, onder] = hitboxVerticaal(item.type, item.y, item.hoogte);
@@ -220,7 +222,7 @@ export function maakKolom(toestand, snelheid) {
         // Elke octopus heeft een eigen grootte; de hoogte volgt uit de verhouding van de afbeelding
         const breedte = CONFIG.octopusBreedte * rand(...CONFIG.octopusGrootte);
         const hoogte = breedte * CONFIG.octopusVerhouding;
-        const halfZichtbaar = octopusZichtbaar(breedte, hoogte).hoogte / 2;
+        const halfZichtbaar = zichtbaar('octopus', breedte, hoogte).hoogte / 2;
         const amp = CONFIG.dobberHoogte;
         const fase = rand(0, Math.PI * 2);
         // Het hele dobbergebied moet binnen het scherm blijven
@@ -230,10 +232,13 @@ export function maakKolom(toestand, snelheid) {
         );
         if (dier) octopusMinVis++;
       } else {
-        const hoogte = rand(CONFIG.visMinHoogte, CONFIG.visMaxHoogte);
+        // Elke vis heeft een eigen grootte; de hoogte volgt uit de verhouding van de afbeelding
+        const breedte = CONFIG.visBreedte * rand(...CONFIG.visGrootte);
+        const hoogte = breedte * CONFIG.visVerhouding;
+        const halfZichtbaar = zichtbaar('vis', breedte, hoogte).hoogte / 2;
         dier = plaatsDier(
-          (y) => ({ type: 'vis', breedte: CONFIG.visBreedte, hoogte, y, amp: 0, snelheidFactor: CONFIG.visSnelheidFactor, kleur: CONFIG.visKleur }),
-          [hoogte / 2, HOOGTE - hoogte / 2], verbodenVis, dieren, toestand.banen.vis
+          (y) => ({ type: 'vis', breedte, hoogte, y, amp: 0, snelheidFactor: CONFIG.visSnelheidFactor, kleur: CONFIG.visKleur }),
+          [halfZichtbaar, HOOGTE - halfZichtbaar], verbodenVis, dieren, toestand.banen.vis
         );
         if (dier) octopusMinVis--;
       }
