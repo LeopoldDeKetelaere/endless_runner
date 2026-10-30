@@ -60,6 +60,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Hindernissen (rotsen, boten, octopussen en vissen)
     this.hindernissen = this.add.group();
+    this.rotsen = this.add.group(); // de rotsen zelf (zonder physics); hun hitbox-delen zitten in this.hindernissen
     this.physics.add.overlap(this.duiker, this.hindernissen, () => this.geraakt());
     // De afbeeldingen van octopussen en vissen volgen hun (onzichtbare) hitbox-object, pas nadat de physics bewogen heeft
     this.events.on('postupdate', this.updateDierBeelden, this);
@@ -236,6 +237,10 @@ export default class GameScene extends Phaser.Scene {
       g.strokeRect(b.x - b.displayWidth / 2, b.y - b.displayHeight / 2, b.displayWidth, b.displayHeight);
     }
     kader(this.duiker.body, DEBUG_KLEUREN.duiker);
+    for (const r of this.rotsen.getChildren()) { // de hele rots (grijs); de piek hiervan telt voor de doorgang
+      g.lineStyle(px(0.7), 0x888888, 1);
+      g.strokeRect(r.x - r.width / 2, r.y - r.height / 2, r.width, r.height);
+    }
     for (const h of this.hindernissen.getChildren()) {
       if (h.beeld) { // het zichtbare dier (grijs), waarmee de doorgang rekent
         g.lineStyle(px(0.7), 0x888888, 1);
@@ -299,6 +304,7 @@ export default class GameScene extends Phaser.Scene {
   startWachten() {
     this.fase = 'wachten';
     this.hindernissen.clear(true, true); // verwijder alle hindernissen
+    this.rotsen.clear(true, true);
     this.duiker.body.setVelocityY(0);
     this.zetDuikerAlpha(1);
     // De tekst staat lager op het scherm, behalve als de duiker daar zit: dan erboven
@@ -388,8 +394,12 @@ export default class GameScene extends Phaser.Scene {
       this.maakHindernis();
     }
 
+    for (const r of this.rotsen.getChildren().slice()) {
+      if (r.x + r.width / 2 < 0) r.destroy(); // uit beeld (neemt ook de hitbox-delen mee)
+    }
     for (const h of this.hindernissen.getChildren().slice()) {
-      // Rotsen en boten bewegen mee met de achtergrond (octopussen en vissen: zie beweegDieren)
+      if (h.ouder) continue; // een hitbox-deel van een rots: beweegt met de rots mee (zie beweegDieren)
+      // Boten bewegen mee met de achtergrond (rotsen, octopussen en vissen: zie beweegDieren)
       if (h.hindernisType !== 'octopus' && h.hindernisType !== 'vis') h.body.setVelocityX(-this.snelheid * h.snelheidFactor);
 
       if (h.x + h.width / 2 < 0) h.destroy(); // uit beeld
@@ -404,6 +414,13 @@ export default class GameScene extends Phaser.Scene {
   beweegDieren(tijd, delta) {
     if (this.isKlaar || this.fase !== 'spelen') return;
     const dt = Math.min(delta, 100) / 1000;
+    // Rotsen: ook zelf bewegen. De hitbox-delen krijgen elke frame hun plek ten opzichte van de rots, zodat ze
+    // precies meebewegen (zonder physics-snelheid, dus zonder haperingen).
+    for (const r of this.rotsen.getChildren()) {
+      r.x -= this.snelheid * dt;
+      r.beeld?.setPosition(r.x, r.y);
+      for (const deel of r.delen) deel.setPosition(r.x + deel.dx, r.y + deel.dy);
+    }
     for (const h of this.hindernissen.getChildren()) {
       if (h.hindernisType !== 'octopus' && h.hindernisType !== 'vis') continue;
       h.leeftijd += dt * 1000;
@@ -418,6 +435,7 @@ export default class GameScene extends Phaser.Scene {
     if (!kolom) return; // geen eerlijke kolom gevonden: sla over
 
     for (const item of kolom.items) {
+      if (item.type === 'rots') { this.maakRots(item); continue; }
       // Alle hindernissen van een kolom beginnen op dezelfde plek (linkerkant)
       const fase = item.fase ?? 0;
       const startY = item.y + item.amp * Math.sin(fase);
@@ -437,6 +455,44 @@ export default class GameScene extends Phaser.Scene {
       else zetHitbox(h, CONFIG.hitbox[item.type]);
       this.hindernissen.add(h);
     }
+  }
+
+  // Een rots bestaat uit drie soorten delen:
+  // - r: een onzichtbaar object ter grootte van de rots (zonder physics), dat naar links beweegt
+  // - r.beeld: de afbeelding erover (eventueel gespiegeld)
+  // - r.delen: een paar onzichtbare hulplichamen (rechthoeken, CONFIG.hitbox.rots) die trapsgewijs de vorm volgen.
+  //   Zij zitten in this.hindernissen en botsen. Ze schalen en spiegelen mee met de rots.
+  // Ontbreekt de afbeelding, dan tonen we het grijze blok met één rechthoek als hitbox.
+  maakRots(item) {
+    const { breedte, hoogte, spiegel } = item;
+    const x = BREEDTE + breedte / 2;
+    const y = HOOGTE - hoogte / 2; // altijd op de onderrand
+    const heeftBeeld = this.textures.exists('rots');
+    const r = this.add.rectangle(x, y, breedte, hoogte, item.kleur).setVisible(!heeftBeeld);
+    r.delen = [];
+    if (heeftBeeld) {
+      r.beeld = this.add.sprite(x, y, 'rots').setDepth(1);
+      r.beeld.setDisplaySize(breedte, hoogte); // altijd in verhouding: breedte en hoogte samen
+      r.beeld.setFlipX(spiegel);
+    }
+    for (const d of heeftBeeld ? CONFIG.hitbox.rots : [{ van: 0, tot: 1, hoogte: 1 }]) {
+      const van = spiegel ? 1 - d.tot : d.van;
+      const tot = spiegel ? 1 - d.van : d.tot;
+      const dh = hoogte * d.hoogte;
+      const dx = ((van + tot) / 2) * breedte - breedte / 2;  // plek van het midden ten opzichte van de rots
+      const dy = hoogte / 2 - dh / 2;                          // op de bodem
+      const deel = this.add.rectangle(x + dx, y + dy, (tot - van) * breedte, dh, 0xff00ff).setVisible(false);
+      this.physics.add.existing(deel);
+      deel.body.setAllowGravity(false);
+      deel.ouder = r;
+      deel.dx = dx;
+      deel.dy = dy;
+      deel.hindernisType = 'rots';
+      this.hindernissen.add(deel);
+      r.delen.push(deel);
+    }
+    r.once('destroy', () => { r.beeld?.destroy(); r.delen.forEach((deel) => deel.destroy()); });
+    this.rotsen.add(r);
   }
 
   // Een octopus of vis bestaat uit twee delen (net als de duiker):

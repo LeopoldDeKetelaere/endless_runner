@@ -5,3 +5,4 @@ dist
 .env.local
 .env.*.local
 assets-bron/achtergrond-test.png
+assets-bron/rots-test.png

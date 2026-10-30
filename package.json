@@ -10,7 +10,8 @@
     "duiker": "node scripts/maak-duiker.mjs",
     "octopus": "node scripts/maak-octopus.mjs",
     "achtergrond": "node scripts/maak-achtergrond.mjs",
-    "vis": "node scripts/maak-vis.mjs"
+    "vis": "node scripts/maak-vis.mjs",
+    "rots": "node scripts/maak-rots.mjs"
   },
   "dependencies": {
     "@fontsource/press-start-2p": "^5.3.0",

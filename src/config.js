@@ -99,10 +99,13 @@ export const CONFIG = {
   // Rotsen en boten nemen maximaal zoveel van de schermhoogte in (0.2 = 20%)
   maxRandHoogteFractie: 0.2,
 
-  // Rotsen: steken omhoog vanaf de bodem
-  rotsBreedte: 144,
-  rotsMinHoogte: 144,
-  rotsKleur: 0x808890,
+  // Rotsen: staan op de onderrand van het scherm. De afbeelding (rots.png) wordt gemaakt met: npm run rots
+  // (uit assets-bron/rots.png). Een rots wordt altijd IN VERHOUDING geschaald: de breedte volgt uit de hoogte.
+  rotsMinHoogte: 144,       // hoogte (de piek) van de kleinste rots, in pixels
+  rotsMaxHoogte: 216,       // hoogte van de grootste rots; zet dezelfde waarde in scripts/maak-rots.mjs (HOOGTE_SPEL)
+  rotsVerhouding: 0.545,    // hoogte / breedte van de afbeelding (het script meldt dit getal)
+  rotsSpiegelKans: 0.5,     // kans dat een rots horizontaal gespiegeld wordt
+  rotsKleur: 0x808890,      // blok dat getoond wordt als de afbeelding ontbreekt
 
   // Boten: hangen naar beneden vanaf de bovenkant
   bootBreedte: 216,
@@ -146,7 +149,18 @@ export const CONFIG = {
     // De duiker: alleen de romp en de helm tellen. De uitgestrekte arm met het glas, de vrije hand en
     // de voeten tellen niet mee. (Bekijk het met toets H en debugHitboxes: true.)
     duiker: { breedte: 0.38, hoogte: 0.69, x: 0.19, y: -0.12 },
-    rots: { breedte: 1, hoogte: 1, x: 0, y: 0 },
+    // De rots: een hoge piek links die naar rechts afloopt. Daarom geen enkele rechthoek, maar een paar rechthoeken
+    // die de vorm trapsgewijs volgen, een beetje binnen de contour (rakelings langs de rand passeren kost geen leven).
+    // Elke rechthoek staat op de bodem:
+    //   van, tot: begin en einde als fractie van de breedte van de rots, gemeten van links (0 = links, 1 = rechts)
+    //   hoogte:   als fractie van de hoogte van de rots
+    // Ze schalen mee met de grootte en spiegelen mee als de rots gespiegeld is. Voor de doorgang telt de
+    // piek (de hoogste zichtbare punt), niet deze rechthoeken.
+    rots: [
+      { van: 0.12, tot: 0.34, hoogte: 0.82 }, // de piek links
+      { van: 0.06, tot: 0.62, hoogte: 0.55 }, // het brede middenstuk
+      { van: 0.64, tot: 0.88, hoogte: 0.30 }, // de lage uitloper rechts
+    ],
     boot: { breedte: 1, hoogte: 1, x: 0, y: 0 },
     // De octopus heeft een CIRKEL rond de kop en het midden van het lichaam; de tentakels tellen niet mee.
     //   straal: als fractie van de breedte van de octopus; x: als fractie van de breedte, y: als fractie van de hoogte

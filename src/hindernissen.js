@@ -79,7 +79,7 @@ function zichtbaar(type, breedte, hoogte) {
 // Hoeveel pixels de duiker verticaal kan verschuiven tussen twee kolommen
 function maxVerschuiving(snelheid) {
   const breedsteHindernis = Math.max(
-    hitboxBreedte('rots', CONFIG.rotsBreedte),
+    CONFIG.rotsMaxHoogte / CONFIG.rotsVerhouding, // de breedste rots (de piek telt, niet de hitbox)
     hitboxBreedte('boot', CONFIG.bootBreedte),
     zichtbaar('octopus', CONFIG.octopusBreedte * CONFIG.octopusGrootte[1], CONFIG.octopusBreedte * CONFIG.octopusGrootte[1] * CONFIG.octopusVerhouding).breedte,
   );
@@ -142,10 +142,10 @@ function gebied(item) {
   return [boven - item.amp, onder + item.amp];
 }
 
-// Een rots staat tegen de onderkant: de bovenkant van zijn hitbox ligt op HOOGTE - hoogte * factor.
 // Een boot hangt aan de bovenkant: de onderkant van zijn hitbox ligt op hoogte * factor.
 // Zonder aanpassing van de hitbox is de factor 1 (de hitbox is het hele object).
-const rotsFactor = () => 0.5 - CONFIG.hitbox.rots.y + CONFIG.hitbox.rots.hoogte / 2;
+// Een rots staat tegen de onderkant en telt voor de doorgang met zijn hoogste zichtbare punt (de piek):
+// de factor is altijd 1, ongeacht de hitboxen van de rots.
 const bootFactor = () => 0.5 + CONFIG.hitbox.boot.y + CONFIG.hitbox.boot.hoogte / 2;
 
 // Zet een dier neer dat 'verboden' gebieden vermijdt. We proberen eerst de baan van het
@@ -190,11 +190,14 @@ export function maakKolom(toestand, snelheid) {
     // Rots of boot (om en om). Past de aan de beurt zijnde soort niet, dan slaan we over.
     if (Math.random() < CONFIG.kansRotsOfBoot) {
       if (eersteIsAanDeBeurt(rotsMinBoot)) {
-        // Rots: vanaf de bodem, mag de doorgang niet raken
-        const maxHoogte = Math.min(maxRandHoogte(), rotsFactor() > 0 ? (HOOGTE - doorgangOnder) / rotsFactor() : Infinity);
+        // Rots: vanaf de bodem, de piek mag de doorgang niet raken. De breedte volgt uit de hoogte (in verhouding).
+        const maxHoogte = Math.min(CONFIG.rotsMaxHoogte, HOOGTE - doorgangOnder);
         if (maxHoogte >= CONFIG.rotsMinHoogte) {
           const hoogte = rand(CONFIG.rotsMinHoogte, maxHoogte);
-          items.push({ type: 'rots', breedte: CONFIG.rotsBreedte, hoogte, y: HOOGTE - hoogte / 2, amp: 0, kleur: CONFIG.rotsKleur });
+          items.push({
+            type: 'rots', breedte: hoogte / CONFIG.rotsVerhouding, hoogte, y: HOOGTE - hoogte / 2, amp: 0,
+            spiegel: Math.random() < CONFIG.rotsSpiegelKans, kleur: CONFIG.rotsKleur,
+          });
           rotsMinBoot++;
         }
       } else {
